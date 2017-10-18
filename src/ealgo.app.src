@@ -1,0 +1,12 @@
+{application, ealgo, [
+      {description, "An Erlang Algorithm Library"}
+    , {vsn, "1.0.0"}
+    , {modules, [
+    	  ealgo
+    	, ealgo_ntl
+    	, ealgo_shield
+      ]}
+    , {registered, []}
+    , {applications, [kernel, stdlib]}
+    , {env, []}
+]}.
