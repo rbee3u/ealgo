@@ -1,7 +1,0 @@
-{application,ealgo,
-             [{description,"An Erlang Algorithm Library"},
-              {vsn,"1.0.0"},
-              {modules,[ealgo_ntheory]},
-              {registered,[]},
-              {applications,[kernel,stdlib]},
-              {env,[]}]}.
