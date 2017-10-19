@@ -9,6 +9,7 @@
                      , Grid :: tuple()}.
 
 
+%% API functions
 -spec new(N :: pos_integer()) ->
     PT :: pt().
 new(N) when is_integer(N), N > 0 ->
@@ -37,6 +38,7 @@ size({Size, _Grid}) ->
     Size.
 
 
+%% Internal functions
 split(Rest, L) when Rest =< ?MAXM ->
     [erlang:list_to_tuple(L)];
 split(Rest, L) ->
