@@ -1,7 +1,7 @@
 -module(ealgo_ntheory).
 -export([quotient/2, remainder/2, quotient_remainder/2]).
 -export([is_divisible/2, is_odd/1, is_even/1]).
--export([gcd/2, gcd/1, lcm/2, lcm/1]).
+-export([gcd/2, gcd/1, lcm/2, lcm/1, power/2, power_mod/3]).
 
 
 %% Definition of integer division:
@@ -95,4 +95,45 @@ lcm(N, M) when is_integer(N), is_integer(M) ->
 -spec lcm(L :: [integer()]) ->
     LCM :: integer().
 lcm(L) when is_list(L) -> lists:foldl(fun lcm/2, 1, L).
+
+
+%% Gives A to the power X where A is an integer and X is a
+%% nonnegative integer.
+%% note: power(0, 0) is undefined.
+-spec power(A :: integer(), X :: non_neg_integer()) ->
+    POWER :: integer().
+power(A, 0) when is_integer(A)
+               , A =/= 0 -> 1;
+power(0, X) when is_integer(X)
+               , X  >  0 -> 0;
+power(A, X) when is_integer(A)
+               , is_integer(X)
+               , X  >  0 ->
+    B = power(A, X div 2),
+    case is_even(X) of
+        true -> B * B;
+        _ -> A * B * B
+    end.
+
+
+%% Gives A ^ X mod M where A is an integer, X is a
+%% nonnegative integer and M is a nonzero integer.
+%% note: power_mod(0, 0, M) is undefined.
+-spec power_mod(A :: integer(), X :: non_neg_integer(), M :: integer()) ->
+    POWER_MOD :: integer().
+power_mod(A, X, M) when is_integer(A)
+                      , is_integer(X)
+                      , is_integer(M)
+                      , X >= 0
+                      , M =/= 0 ->
+    if
+    X =:= 0, A =/= 0 -> remainder(1, M);
+    X  >  0, A =:= 0 -> 0;
+    X  >  0 ->
+        B = power_mod(A, X div 2, M),
+        case is_even(X) of
+            true -> remainder(B * B, M);
+            _ -> remainder(A * B * B, M)
+        end
+    end.
 
