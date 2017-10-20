@@ -1,7 +1,43 @@
 -module(ealgo_ntheory).
+-export([is_divisible/2, is_odd/1, is_even/1, multiplicity/2]).
 -export([quotient/2, remainder/2, quotient_remainder/2]).
--export([is_divisible/2, is_odd/1, is_even/1]).
 -export([gcd/2, gcd/1, lcm/2, lcm/1, power/2, power_mod/3]).
+
+
+%% Gives true if N is divisible by M, and false if not.
+-spec is_divisible(N :: integer(), M :: integer()) ->
+    P :: boolean().
+is_divisible(N, M) when is_integer(N)
+                      , is_integer(M)
+                      , M =/= 0 ->
+    (N rem M) == 0.
+
+%% Gives true if Z is an odd integer, and false otherwise.
+-spec is_odd(Z :: integer()) ->
+    P :: boolean().
+is_odd(Z) when is_integer(Z) ->
+    (Z band 1) =:= 1.
+
+%% Gives true if Z is an even integer, and false otherwise.
+-spec is_even(Z :: integer()) ->
+    P :: boolean().
+is_even(Z) when is_integer(Z) ->
+    (Z band 1) =:= 0.
+
+%% Gives the highest power of A that divides N.
+-spec multiplicity(N :: integer(), A :: pos_integer()) ->
+    Y :: non_neg_integer().
+multiplicity(N, A) when is_integer(N)
+                      , is_integer(A)
+                      , N =/= 0
+                      , A  >  1 ->
+    multiplicity(N, A, 1, A, 0, 0).
+multiplicity(N, A, 1, _M, _PM, Y) when (N rem A) =/= 0 ->
+    Y div 2;
+multiplicity(N, A, X, M, PM, Y) when (N rem M) =/= 0 ->
+    multiplicity(N div PM, A, 1, A, 0, Y + X);
+multiplicity(N, A, X, M, _PM, Y) ->
+    multiplicity(N, A, X + X, M * M, M, Y).
 
 
 %% Definition of integer division:
@@ -38,27 +74,6 @@ quotient_remainder(N, M) when is_integer(N)
                             , M =/= 0 ->
     R = remainder(N, M), Q = (N - R) div M,
     {Q, R}.
-
-
-%% Gives true if N is divisible by M, and false if not.
--spec is_divisible(N :: integer(), M :: integer()) ->
-    P :: boolean().
-is_divisible(N, M) when is_integer(N)
-                      , is_integer(M)
-                      , M =/= 0 ->
-    (N rem M) == 0.
-
-%% Gives true if Z is an odd integer, and false otherwise.
--spec is_odd(Z :: integer()) ->
-    P :: boolean().
-is_odd(Z) when is_integer(Z) ->
-    (Z band 1) =:= 1.
-
-%% Gives true if Z is an even integer, and false otherwise.
--spec is_even(Z :: integer()) ->
-    P :: boolean().
-is_even(Z) when is_integer(Z) ->
-    (Z band 1) =:= 0.
 
 
 %% https://en.wikipedia.org/wiki/Greatest_common_divisor
