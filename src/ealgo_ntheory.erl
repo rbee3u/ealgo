@@ -2,6 +2,7 @@
 -export([is_divisible/2, is_odd/1, is_even/1, multiplicity/2]).
 -export([quotient/2, remainder/2, quotient_remainder/2]).
 -export([gcd/2, gcd/1, lcm/2, lcm/1, power/2, power_mod/3]).
+-export([is_coprime/2, jacobi_symbol/2]).
 
 
 %% Gives true if N is divisible by M, and false if not.
@@ -151,4 +152,41 @@ power_mod(A, X, M) when is_integer(A)
             _ -> remainder(A * B * B, M)
         end
     end.
+
+%% https://en.wikipedia.org/wiki/Coprime_integers
+%% Gives true if N and M are relatively prime, and false otherwise. 
+%% relation: is_coprime(N, M) = true   <=>   gcd(N, M) = 1
+-spec is_coprime(N :: integer(), M :: integer()) ->
+    P :: boolean().
+is_coprime(N, M) when is_integer(N), is_integer(M) ->
+    gcd(N, M) =:= 1.
+
+
+%% https://en.wikipedia.org/wiki/Jacobi_symbol
+%% Gives the Jacobi symbol (A / N).
+-spec jacobi_symbol(A :: integer(), N :: integer()) ->
+    J :: -1 | 0 | 1.
+jacobi_symbol(A, 1) when is_integer(A) ->
+    1;
+jacobi_symbol(A, N) when is_integer(A)
+                       , is_integer(N)
+                       , (N rem 2) > 0 ->
+    B = remainder(A, N),
+    case is_coprime(B, N) of
+    false -> 0; true ->
+        jacobi_helper(B, N, 1)
+    end.
+jacobi_helper(1, _N, C) ->
+    C;
+jacobi_helper(A, N, C) when (A rem 2) =:= 0 ->
+    D = case is_even(S = multiplicity(A, 2)) of
+        true -> C; false -> case (N rem 8) of
+            R when R =/= 3, R =/= 5 -> C; _ -> -C
+        end end,
+    jacobi_helper(A bsr S, N, D);
+jacobi_helper(A, N, C) ->
+    D = case {A rem 4, N rem 4} of
+        {3, 3} -> -C; _ -> C
+        end,
+    jacobi_helper(N rem A, A, D).
 
