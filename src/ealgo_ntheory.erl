@@ -2,8 +2,7 @@
 -export([is_divisible/2, is_odd/1, is_even/1, multiplicity/2]).
 -export([quotient/2, remainder/2, quotient_remainder/2]).
 -export([gcd/2, gcd/1, lcm/2, lcm/1, power/2, power_mod/3]).
--export([is_coprime/2, jacobi_symbol/2]).
--compile(export_all).
+-export([is_coprime/2, jacobi_symbol/2, is_prime/1, sign/1]).
 
 
 -define(ODD(N),     ((N rem 2) =/= 0)).
@@ -210,9 +209,8 @@ is_prime_helper(N) when N =:= 2     -> true;
 is_prime_helper(N) when ?EVEN(N)    -> false;
 is_prime_helper(N) when N < 1000000 -> trial_division(N);
 is_prime_helper(N) ->
-    trial_division(N) andalso miller_rabin(N, 2) andalso
-    (not is_square(N)) andalso strong_lucas(N).
-
+            trial_division(N) andalso miller_rabin(N, 2)
+    andalso (not is_square(N)) andalso strong_lucas(N).
 
 -define(DIVISOR_LIST, [
  2,3,5,7,11,13,17,19,23,29,31,37,41,43,47,53,59,61,67,71,73
@@ -225,106 +223,78 @@ is_prime_helper(N) ->
 ,617,619,631,641,643,647,653,659,661,673,677,683,691,701,709
 ,719,727,733,739,743,751,757,761,769,773,787,797,809,811,821
 ,823,827,829,839,853,857,859,863,877,881,883,887,907,911,919
-,929,937,941,947,953,967,971,977,983,991,997,1009,1013,1019
-]).
+,929,937,941,947,953,967,971,977,983,991,997,1009,1013,1019]).
 trial_division(N) -> trial_division(N, ?DIVISOR_LIST).
-trial_division(N, []) -> true;
-trial_division(N, [H | _]) when H * H > N -> true;
+trial_division(_, [     ])                  -> true;
+trial_division(N, [H | _]) when H * H > N   -> true;
 trial_division(N, [H | _]) when ?EVEN(N, H) -> false;
 trial_division(N, [_ | T]) -> trial_division(N, T).
 
-
 %% https://en.wikipedia.org/wiki/Miller%E2%80%93Rabin_primality_test
 miller_rabin(N, A) ->
-    S = multiplicity(N - 1, 2),
-    D = (N - 1) bsr S,
-    B = power_mod(A, D, N),
-    if
-    B =:= 1     -> true;
-    B =:= N - 1 -> true;
-    true ->
-        miller_rabin(N, B, S - 1)
+    S = multiplicity(M = N - 1, 2),
+    case power_mod(A, M bsr S, N) of
+    B when B =:= 1          -> true;
+    B when B =:= N - 1      -> true;
+    B -> miller_rabin(N, B, S - 1)
     end.
-miller_rabin(_N, _A, 0) ->
-    false;
-miller_rabin(N, A, R) ->
-    B = (A * A) rem N,
-    if
-    B =:= 1     -> false;
-    B =:= N - 1 -> true;
-    true -> miller_rabin(N, B, R - 1)
+miller_rabin(_, _, 0) -> false;
+miller_rabin(N, A, S) ->
+    case remainder(A * A, N) of
+    B when B =:= 1          -> false;
+    B when B =:= N - 1      -> true;
+    B -> miller_rabin(N, B, S - 1)
     end.
-
-
 
 %% https://en.wikipedia.org/wiki/Lucas_pseudoprime
 strong_lucas(N) ->
-    A = lucas_find_A(5, N),
-    P = 1,
+    A = fun SearchA(X) ->
+        case jacobi_symbol(X, N) of
+        -1 -> X; _  ->
+            SearchA(-X - 2*sign(X))
+        end end (5),
     Q = (1 - A) div 4,
-    S = multiplicity(N + 1, 2),
-    D = (N + 1) bsr S,
-    {U, V} = lucas_UV(D, A, P, Q, N),
-    if
-    U =:= 0; V =:= 0 ->
-        true;
-    true ->
-        strong_lucas(N, V, power_mod(Q, D, N), S - 1)
+    S = multiplicity(M = N + 1, 2),
+    case lucas_uv(D = M bsr S, A, Q, N) of
+    {0, _} -> true; {_, 0} -> true; {_, V} ->
+        Q2 = power_mod(Q, D,       N),
+        strong_lucas(N, V, Q2, S - 1)
     end.
-strong_lucas(_N, _V, _Q, 0) ->
-    false;
-strong_lucas(N, V, Q, R) ->
-    V2 = remainder(V * V - 2 * Q, N),
-    Q2 = remainder(Q * Q,         N),
-    if
-    V2 =:= 0 -> true;
-    true -> strong_lucas(N, V2, Q2, R - 1)
+strong_lucas(_, _, _, 0) -> false;
+strong_lucas(N, V, Q, S) ->
+    case remainder(V * V - 2 * Q, N) of
+    0 -> true; V2 ->
+        Q2 = remainder(Q * Q,       N),
+        strong_lucas(N, V2, Q2, S - 1)
     end.
 
-
-
-lucas_find_A(A, N) ->
-    case jacobi_symbol(A, N) of
-    (-1) -> A; _ when A > 0 ->
-         lucas_find_A(-(A+2), N);
-    _ -> lucas_find_A(-(A-2), N)
+lucas_uv(1, _, _, _) -> {1, 1};
+lucas_uv(D, A, Q, N) ->
+    case lucas_uv(K = D div 2, A, Q, N) of
+    UV when ?ODD(D) ->
+        TEMP = lucas_double(UV, K, Q, N),
+        lucas_addone(TEMP, A, N);
+    UV ->
+        lucas_double(UV, K, Q, N)
     end.
 
-lucas_UV(1, _A, P, _Q, _N) ->
-    {1, P};
-lucas_UV(M, A, P, Q, N) ->
-    {UK,  VK}  = lucas_UV(K = (M div 2), A, P, Q, N),
-    {U2K, V2K} = lucas_UV_double({UK, VK}, K, Q, N),
-    case is_odd(M) of
-    true ->
-        lucas_UV_addone({U2K, V2K}, A, P, N);
-    _ ->
-        {U2K, V2K}
-    end.
+lucas_double({U, V}, K, Q, N) ->
+    Q2 = power_mod(Q, K, N),
+    {remainder(U * V, N), remainder(V*V - 2*Q2, N)}.
 
-lucas_UV_double({UK, VK}, K, Q, N) ->
-    U2K = remainder(UK * VK, N),
-    V2K = remainder(VK * VK - 2*power_mod(Q, K, N), N),
-    {U2K, V2K}.
-
-lucas_UV_addone({UK, VK}, A, P, N) ->
-    case is_odd(UT = P * UK + VK) of
-    true ->
-        UK1 = remainder((UT + N) div 2, N);
-    false ->
-        UK1 = remainder(UT div 2, N)
-    end,
-    case is_odd(VT = A * UK + P * VK) of
-    true ->
-        VK1 = remainder((VT + N) div 2, N);
-    false ->
-        VK1 = remainder(VT div 2, N)
-    end,
-    {UK1, VK1}.
+lucas_addone({U, V}, A, N) ->
+    UD = case is_odd(UT = U + V) of
+            true -> N; _ -> 0
+         end,
+    VD = case is_odd(VT = A * U + V) of
+            true -> N; _ -> 0
+         end,
+    {remainder((UT + UD) div 2, N),
+     remainder((VT + VD) div 2, N)}.
 
 is_square(N) when N < 0 -> false;
 is_square(N) -> is_square(N, 0, N).
-is_square(N, L, H) when L > H -> false;
+is_square(_, L, H) when L > H -> false;
 is_square(N, L, H) ->
     M = (L + H) div 2,
     MM = M * M,
@@ -332,5 +302,16 @@ is_square(N, L, H) ->
     N > MM -> is_square(N, L + 1, H);
     N < MM -> is_square(N, L, H - 1);
     true -> true
+    end.
+
+
+%% Gives -1, 0, or 1 depending on whether N is negative, zero, or positive.
+-spec sign(N :: integer()) ->
+    S :: -1 | 0 | 1.
+sign(N) when is_integer(N) ->
+    if
+        N < 0 -> -1;
+        N > 0 ->  1;
+        true  ->  0
     end.
 
