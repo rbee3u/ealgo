@@ -3,6 +3,7 @@
 -export([quotient/2, remainder/2, quotient_remainder/2]).
 -export([gcd/2, gcd/1, lcm/2, lcm/1, power/2, power_mod/3]).
 -export([is_coprime/2, jacobi_symbol/2, is_prime/1, sign/1]).
+-export([bit_length/1]).
 
 
 -define(ODD(N),     ((N rem 2) =/= 0)).
@@ -314,4 +315,22 @@ sign(N) when is_integer(N) ->
         N > 0 ->  1;
         true  ->  0
     end.
+
+
+%% Gives the number of binary bits necessary to represent the integer N.
+%% In other words, the integer S satisfied that 2^(S-1) ≤ |N| < 2^S, and
+%% we defined S = 0 when N = 0 for the corner case.
+-spec bit_length(N :: integer()) ->
+    S :: non_neg_integer().
+bit_length(N) when is_integer(N) ->
+    bit_length(erlang:abs(N), 0).
+bit_length(N, R) when N >= 16#10000000000000000 ->
+    E = erlang:external_size(N) * 8 - 64,  bit_length(N bsr  E, R +  E);
+bit_length(N, R) when N >= 16#100000000 -> bit_length(N bsr 32, R + 32);
+bit_length(N, R) when N >= 16#10000     -> bit_length(N bsr 16, R + 16);
+bit_length(N, R) when N >= 16#100       -> bit_length(N bsr  8, R +  8);
+bit_length(N, R) when N >= 16#10        -> bit_length(N bsr  4, R +  4);
+bit_length(N, R) when N >= 16#4         -> bit_length(N bsr  2, R +  2);
+bit_length(N, R) when N >= 16#2         -> bit_length(N bsr  1, R +  1);
+bit_length(N, R) when N =:= 1; N =:= 0  -> N + R.
 
