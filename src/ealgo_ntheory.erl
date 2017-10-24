@@ -334,3 +334,15 @@ bit_length(N, R) when N >= 16#4         -> bit_length(N bsr  2, R +  2);
 bit_length(N, R) when N >= 16#2         -> bit_length(N bsr  1, R +  1);
 bit_length(N, R) when N =:= 1; N =:= 0  -> N + R.
 
+
+%% Gives the N'th root and remainder of integer X.
+-spec nthrootrem(X :: non_neg_integer(), N :: pos_integer()) ->
+    {Y :: non_neg_integer(), R :: non_neg_integer()}.
+nthrootrem(X, N) when is_integer(X)
+                    , is_integer(N)
+                    , X >= 0, N > 0 ->
+
+
+    .
+
+
