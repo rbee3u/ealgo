@@ -1,51 +1,48 @@
 -module(ealgo_ntheory).
--export([is_divisible/2, is_odd/1, is_even/1, multiplicity/2]).
+-include("ealgo.hrl").
+-export([divisible/2, is_odd/1, is_even/1, multiplicity/2]).
 -export([quotient/2, remainder/2, quotient_remainder/2]).
 -export([gcd/2, gcd/1, lcm/2, lcm/1, power/2, power_mod/3]).
 -export([is_coprime/2, jacobi_symbol/2, is_prime/1, sign/1]).
 -export([bit_length/1]).
 
 
--define(ODD(N),     ((N rem 2) =/= 0)).
--define(EVEN(N),    ((N rem 2) =:= 0)).
--define(ODD(N, M),  ((N rem M) =/= 0)).
--define(EVEN(N, M), ((N rem M) =:= 0)).
-
-
 %% Gives true if N is divisible by M, and false if not.
--spec is_divisible(N :: integer(), M :: integer()) ->
+-spec divisible(N :: integer(), M :: integer()) ->
     P :: boolean().
-is_divisible(N, M) when is_integer(N)
-                      , is_integer(M)
-                      , M =/= 0 ->
-    (N rem M) == 0.
+divisible(N, M) when is_integer(N)
+                   , is_integer(M)
+                   , ?NEQ(M) ->
+    ?EVEN(N, M).
 
 %% Gives true if N is an odd integer, and false otherwise.
 -spec is_odd(N :: integer()) ->
     P :: boolean().
 is_odd(N) when is_integer(N) ->
-    (N rem 2) =/= 0.
+    ?ODD(N).
 
 %% Gives true if N is an even integer, and false otherwise.
 -spec is_even(N :: integer()) ->
     P :: boolean().
 is_even(N) when is_integer(N) ->
-    (N rem 2) =:= 0.
+    ?EVEN(N).
 
 %% Gives the highest power of A that divides N.
 -spec multiplicity(N :: integer(), A :: pos_integer()) ->
     Y :: non_neg_integer().
 multiplicity(N, A) when is_integer(N)
                       , is_integer(A)
-                      , N =/= 0
-                      , A  >  1 ->
-    multiplicity(N, A, 1, A, 0, 0).
-multiplicity(N, A, 1, _M, _PM, Y) when ?ODD(N, A) ->
-    Y div 2;
-multiplicity(N, A, X,  M,  PM, Y) when ?ODD(N, M) ->
-    multiplicity(N div PM, A, 1, A, 0, Y + X);
-multiplicity(N, A, X,  M, _PM, Y) ->
-    multiplicity(N, A, X + X, M * M, M, Y).
+                      , ?NEQ(N)
+                      , ?GT(A, 1) ->
+    multiplicity(N, A, 0).
+multiplicity(N, A, Y) when ?ODD(N, A) ->
+    Y;
+multiplicity(N, A, Y) ->
+    multiplicity(N, A, Y, 1, A).
+multiplicity(N, A, Y, X, M) when ?ODD(N, M * M) ->
+    multiplicity(N div M, A, Y + X);
+multiplicity(N, A, Y, X, M) ->
+    multiplicity(N, A, Y, X + X, M * M).
 
 
 %% Definition of integer division:
@@ -59,7 +56,7 @@ multiplicity(N, A, X,  M, _PM, Y) ->
     Q :: integer().
 quotient(N, M) when is_integer(N)
                   , is_integer(M)
-                  , M =/= 0 ->
+                  , ?NEQ(M) ->
     (N - remainder(N, M)) div M.
 
 %% Gives the remainder on division of N by M.
@@ -67,7 +64,7 @@ quotient(N, M) when is_integer(N)
     R :: integer().
 remainder(N, M) when is_integer(N)
                    , is_integer(M)
-                   , M =/= 0 ->
+                   , ?NEQ(M) ->
     case N rem M of
     R when R > 0, M < 0 -> R + M;
     R when R < 0, M > 0 -> R + M;
@@ -79,7 +76,7 @@ remainder(N, M) when is_integer(N)
     {Q :: integer(), R :: integer()}.
 quotient_remainder(N, M) when is_integer(N)
                             , is_integer(M)
-                            , M =/= 0 ->
+                            , ?NEQ(M) ->
     R = remainder(N, M), Q = (N - R) div M,
     {Q, R}.
 
@@ -213,19 +210,8 @@ is_prime_helper(N) ->
             trial_division(N) andalso miller_rabin(N, 2)
     andalso (not is_square(N)) andalso strong_lucas(N).
 
--define(DIVISOR_LIST, [
- 2,3,5,7,11,13,17,19,23,29,31,37,41,43,47,53,59,61,67,71,73
-,79,83,89,97,101,103,107,109,113,127,131,137,139,149,151,157
-,163,167,173,179,181,191,193,197,199,211,223,227,229,233,239
-,241,251,257,263,269,271,277,281,283,293,307,311,313,317,331
-,337,347,349,353,359,367,373,379,383,389,397,401,409,419,421
-,431,433,439,443,449,457,461,463,467,479,487,491,499,503,509
-,521,523,541,547,557,563,569,571,577,587,593,599,601,607,613
-,617,619,631,641,643,647,653,659,661,673,677,683,691,701,709
-,719,727,733,739,743,751,757,761,769,773,787,797,809,811,821
-,823,827,829,839,853,857,859,863,877,881,883,887,907,911,919
-,929,937,941,947,953,967,971,977,983,991,997,1009,1013,1019]).
-trial_division(N) -> trial_division(N, ?DIVISOR_LIST).
+
+trial_division(N) -> trial_division(N, ?PRIME_LIST_1000).
 trial_division(_, [     ])                  -> true;
 trial_division(N, [H | _]) when H * H > N   -> true;
 trial_division(N, [H | _]) when ?EVEN(N, H) -> false;
@@ -293,17 +279,9 @@ lucas_addone({U, V}, A, N) ->
     {remainder((UT + UD) div 2, N),
      remainder((VT + VD) div 2, N)}.
 
-is_square(N) when N < 0 -> false;
-is_square(N) -> is_square(N, 0, N).
-is_square(_, L, H) when L > H -> false;
-is_square(N, L, H) ->
-    M = (L + H) div 2,
-    MM = M * M,
-    if
-    N > MM -> is_square(N, L + 1, H);
-    N < MM -> is_square(N, L, H - 1);
-    true -> true
-    end.
+is_square(N) ->
+    {_, R} = nthrootrem(N, 2),
+    R =:= 0.
 
 
 %% Gives -1, 0, or 1 depending on whether N is negative, zero, or positive.
@@ -341,8 +319,21 @@ bit_length(N, R) when N =:= 1; N =:= 0  -> N + R.
 nthrootrem(X, N) when is_integer(X)
                     , is_integer(N)
                     , X >= 0, N > 0 ->
-
-
-    .
-
+    if
+    X =:= 0; X =:= 1; N =:= 1 ->
+        {X, 0};
+    true ->
+        S = (bit_length(X) - 1) div N,
+        nthrootrem(X, N, 1 bsl S, 2 bsl S)
+    end.
+nthrootrem(X, N, L, H) when L > H ->
+    {H, X - power(H, N)};
+nthrootrem(X, N, L, H) ->
+    M = (L + H) div 2,
+    case X < power(M, N) of
+    true ->
+        nthrootrem(X, N, L, M - 1);
+    false ->
+        nthrootrem(X, N, M + 1, H)
+    end.
 

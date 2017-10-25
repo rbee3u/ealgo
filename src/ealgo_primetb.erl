@@ -1,4 +1,5 @@
 -module(ealgo_primetb).
+-include("ealgo.hrl").
 -export([new/1, list/1]).
 -export([get/2, size/1]).
 -define(MAXM, 16#10000).
