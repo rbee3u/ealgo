@@ -122,19 +122,20 @@ lcm(L) when is_list(L) -> lists:foldl(fun lcm/2, 1, L).
 %% note: power(0, 0) is undefined.
 -spec power(A :: integer(), X :: non_neg_integer()) ->
     POWER :: integer().
-power(A, 0) when is_integer(A)
-               , ?NEQ(A) -> 1;
-power(0, X) when is_integer(X)
-               , ?GT(X) -> 0;
 power(A, X) when is_integer(A)
                , is_integer(X)
-               , ?GT(X) ->
-    B = power(A, X div 2),
-    case is_even(X) of
-        true -> B * B;
-        _ -> A * B * B
+               , ?GTE(X) ->
+    if
+    % ?EQ(A), ?EQ(X) undef
+    ?EQ(A),  ?NEQ(X) -> 0;
+    ?NEQ(A),  ?EQ(X) -> 1;
+    ?NEQ(A), ?NEQ(X) ->
+        B = power(A, X div 2),
+        case ?EVEN(X) of
+            true -> B * B;
+            _ -> A * B * B
+        end
     end.
-
 
 %% Gives A ^ X mod M where A is an integer, X is a
 %% nonnegative integer and M is a nonzero integer.
@@ -144,18 +145,20 @@ power(A, X) when is_integer(A)
 power_mod(A, X, M) when is_integer(A)
                       , is_integer(X)
                       , is_integer(M)
-                      , X >= 0
-                      , M =/= 0 ->
+                      , ?GTE(X)
+                      , ?NEQ(M) ->
     if
-    X =:= 0, A =/= 0 -> remainder(1, M);
-    X  >  0, A =:= 0 -> 0;
-    X  >  0 ->
+    % ?EQ(A), ?EQ(X) undef
+    ?EQ(A),  ?NEQ(X) -> 0;
+    ?NEQ(A),  ?EQ(X) -> remainder(1, M);
+    ?NEQ(A), ?NEQ(X) ->
         B = power_mod(A, X div 2, M),
-        case is_even(X) of
+        case ?EVEN(X) of
             true -> remainder(B * B, M);
             _ -> remainder(A * B * B, M)
         end
     end.
+
 
 %% https://en.wikipedia.org/wiki/Coprime_integers
 %% Gives true if N and M are relatively prime, and false otherwise.
