@@ -104,9 +104,9 @@ gcd(L) when is_list(L) -> lists:foldl(fun gcd/2, 0, L).
 -spec lcm(N :: integer(), M :: integer()) ->
     LCM :: integer().
 lcm(N, M) when is_integer(N), is_integer(M) ->
-    if N =:= 0; M =:= 0 -> 0;
-    true ->
-        abs(N * M) div gcd(N, M)
+    case abs(N * M) of
+    0 -> 0;
+    P -> P div gcd(N, M)
     end.
 
 %% Gives the least common multiple of a list of integers.
@@ -123,12 +123,12 @@ lcm(L) when is_list(L) -> lists:foldl(fun lcm/2, 1, L).
 -spec power(A :: integer(), X :: non_neg_integer()) ->
     POWER :: integer().
 power(A, 0) when is_integer(A)
-               , A =/= 0 -> 1;
+               , ?NEQ(A) -> 1;
 power(0, X) when is_integer(X)
-               , X  >  0 -> 0;
+               , ?GT(X) -> 0;
 power(A, X) when is_integer(A)
                , is_integer(X)
-               , X  >  0 ->
+               , ?GT(X) ->
     B = power(A, X div 2),
     case is_even(X) of
         true -> B * B;
@@ -163,7 +163,7 @@ power_mod(A, X, M) when is_integer(A)
 -spec is_coprime(N :: integer(), M :: integer()) ->
     P :: boolean().
 is_coprime(N, M) when is_integer(N), is_integer(M) ->
-    gcd(N, M) =:= 1.
+    ?EQ(gcd(N, M), 1).
 
 
 %% https://en.wikipedia.org/wiki/Jacobi_symbol
