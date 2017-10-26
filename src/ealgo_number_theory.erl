@@ -1,4 +1,4 @@
--module(ealgo_ntheory).
+-module(ealgo_number_theory).
 -include("ealgo.hrl").
 -export([divisible/2, is_odd/1, is_even/1, multiplicity/2]).
 -export([quotient/2, remainder/2, quotient_remainder/2]).

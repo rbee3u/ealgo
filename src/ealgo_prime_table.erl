@@ -1,4 +1,4 @@
--module(ealgo_primetb).
+-module(ealgo_prime_table).
 -include("ealgo.hrl").
 -export([new/1, list/1]).
 -export([get/2, size/1]).

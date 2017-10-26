@@ -1,8 +1,13 @@
--module(ealgo_primetb_tests).
+-module(ealgo_prime_table_tests).
 -include_lib("eunit/include/eunit.hrl").
+-import(ealgo_prime_table, [
+      new/1
+    , list/1
+    , get/2
+]).
 
 
-ealgo_primetb_test_() ->
+all_test_() ->
     {foreach,
         fun() -> error_logger:tty(false) end,
         fun(_) -> error_logger:tty(true) end,
@@ -14,21 +19,21 @@ ealgo_primetb_test_() ->
 
 basic_operation() ->
     ?assertEqual(
-        ealgo_primetb:list(20), [2,3,5,7,11,13,17,19]
+        list(20), [2,3,5,7,11,13,17,19]
     ),
-    PT1 = ealgo_primetb:new(10),
+    PT1 = new(10),
     ?assertEqual(
-        ealgo_primetb:get(1, PT1), 2
-    ),
-    ?assertEqual(
-        ealgo_primetb:get(4, PT1), 7
-    ),
-    PT2 = ealgo_primetb:new(2000000),
-    ?assertEqual(
-        ealgo_primetb:get(2, PT2), 3
+        get(1, PT1), 2
     ),
     ?assertEqual(
-        ealgo_primetb:get(100000, PT2), 1299709
+        get(4, PT1), 7
+    ),
+    PT2 = new(2000000),
+    ?assertEqual(
+        get(2, PT2), 3
+    ),
+    ?assertEqual(
+        get(100000, PT2), 1299709
     ),
     ok.
 
