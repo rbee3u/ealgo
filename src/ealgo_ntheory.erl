@@ -180,7 +180,9 @@ jacobi_symbol(A, N) when is_integer(A)
                        , (N rem 2) > 0 ->
     B = remainder(A, N),
     case is_coprime(B, N) of
-    false -> 0; true ->
+    false ->
+        0;
+    true ->
         jacobi_symbol(B, N, 1)
     end.
 jacobi_symbol(1, _N, C) ->
@@ -224,36 +226,40 @@ trial_division(N, [_ | T]) -> trial_division(N, T).
 miller_rabin(N, A) ->
     S = multiplicity(M = N - 1, 2),
     case power_mod(A, M bsr S, N) of
-    B when B =:= 1          -> true;
-    B when B =:= N - 1      -> true;
+    B when ?EQ(B,     1)      -> true;
+    B when ?EQ(B, N - 1)      -> true;
     B -> miller_rabin(N, B, S - 1)
     end.
 miller_rabin(_, _, 0) -> false;
 miller_rabin(N, A, S) ->
     case remainder(A * A, N) of
-    B when B =:= 1          -> false;
-    B when B =:= N - 1      -> true;
+    B when ?EQ(B,     1)      -> false;
+    B when ?EQ(B, N - 1)      -> true;
     B -> miller_rabin(N, B, S - 1)
     end.
 
 %% https://en.wikipedia.org/wiki/Lucas_pseudoprime
 strong_lucas(N) ->
     A = fun SearchA(X) ->
-        case jacobi_symbol(X, N) of
-        -1 -> X; _  ->
-            SearchA(-X - 2*sign(X))
-        end end (5),
+            case jacobi_symbol(X, N) of
+            -1 -> X;
+            _  -> SearchA(-X-2*sign(X))
+            end
+        end (5),
     Q = (1 - A) div 4,
     S = multiplicity(M = N + 1, 2),
     case lucas_uv(D = M bsr S, A, Q, N) of
-    {0, _} -> true; {_, 0} -> true; {_, V} ->
+    {0, _} -> true;
+    {_, 0} -> true;
+    {_, V} ->
         Q2 = power_mod(Q, D,       N),
         strong_lucas(N, V, Q2, S - 1)
     end.
 strong_lucas(_, _, _, 0) -> false;
 strong_lucas(N, V, Q, S) ->
     case remainder(V * V - 2 * Q, N) of
-    0 -> true; V2 ->
+    0 -> true;
+    V2 ->
         Q2 = remainder(Q * Q,       N),
         strong_lucas(N, V2, Q2, S - 1)
     end.
@@ -283,8 +289,7 @@ lucas_addone({U, V}, A, N) ->
      remainder((VT + VD) div 2, N)}.
 
 is_square(N) ->
-    {_, R} = nthrootrem(N, 2),
-    R =:= 0.
+    {_, R} = nthrootrem(N, 2), ?EQ(R).
 
 
 %% Gives -1, 0, or 1 depending on whether N is negative, zero, or positive.
@@ -292,9 +297,9 @@ is_square(N) ->
     S :: -1 | 0 | 1.
 sign(N) when is_integer(N) ->
     if
-        N < 0 -> -1;
-        N > 0 ->  1;
-        true  ->  0
+        ?LT(N) -> -1;
+        ?GT(N) ->  1;
+        true   ->  0
     end.
 
 
@@ -305,15 +310,15 @@ sign(N) when is_integer(N) ->
     S :: non_neg_integer().
 bit_length(N) when is_integer(N) ->
     bit_length(erlang:abs(N), 0).
-bit_length(N, R) when N >= 16#10000000000000000 ->
+bit_length(N, R) when ?GTE(N, 16#10000000000000000) ->
     E = erlang:external_size(N) * 8 - 64,  bit_length(N bsr  E, R +  E);
-bit_length(N, R) when N >= 16#100000000 -> bit_length(N bsr 32, R + 32);
-bit_length(N, R) when N >= 16#10000     -> bit_length(N bsr 16, R + 16);
-bit_length(N, R) when N >= 16#100       -> bit_length(N bsr  8, R +  8);
-bit_length(N, R) when N >= 16#10        -> bit_length(N bsr  4, R +  4);
-bit_length(N, R) when N >= 16#4         -> bit_length(N bsr  2, R +  2);
-bit_length(N, R) when N >= 16#2         -> bit_length(N bsr  1, R +  1);
-bit_length(N, R) when N =:= 1; N =:= 0  -> N + R.
+bit_length(N, R) when ?GTE(N, 16#100000000) -> bit_length(N bsr 32, R + 32);
+bit_length(N, R) when ?GTE(N, 16#10000)     -> bit_length(N bsr 16, R + 16);
+bit_length(N, R) when ?GTE(N, 16#100)       -> bit_length(N bsr  8, R +  8);
+bit_length(N, R) when ?GTE(N, 16#10)        -> bit_length(N bsr  4, R +  4);
+bit_length(N, R) when ?GTE(N, 16#4)         -> bit_length(N bsr  2, R +  2);
+bit_length(N, R) when ?GTE(N, 16#2)         -> bit_length(N bsr  1, R +  1);
+bit_length(N, R) when ?EQ(N, 1); ?EQ(N)     -> N + R.
 
 
 %% Gives the N'th root and remainder of integer X.
@@ -321,15 +326,16 @@ bit_length(N, R) when N =:= 1; N =:= 0  -> N + R.
     {Y :: non_neg_integer(), R :: non_neg_integer()}.
 nthrootrem(X, N) when is_integer(X)
                     , is_integer(N)
-                    , X >= 0, N > 0 ->
+                    , ?GTE(X)
+                    , ?GT(N) ->
     if
-    X =:= 0; X =:= 1; N =:= 1 ->
+    ?EQ(X); ?EQ(X, 1); ?EQ(N, 1) ->
         {X, 0};
     true ->
         S = (bit_length(X) - 1) div N,
         nthrootrem(X, N, 1 bsl S, 2 bsl S)
     end.
-nthrootrem(X, N, L, H) when L > H ->
+nthrootrem(X, N, L, H) when ?GT(L, H) ->
     {H, X - power(H, N)};
 nthrootrem(X, N, L, H) ->
     M = (L + H) div 2,
