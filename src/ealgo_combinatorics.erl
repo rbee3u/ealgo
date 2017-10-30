@@ -1,7 +1,7 @@
 -module(ealgo_combinatorics).
 -include("ealgo.hrl").
 -export([cartesian_product/2, cartesian_product/1, cartesian_power/2]).
--export([subsets/2, subsets/1]).
+-export([subsets/2, subsets/1, next_permutation/1, permutations/1]).
 
 
 %% https://en.wikipedia.org/wiki/Cartesian_product
@@ -50,4 +50,32 @@ subsets(L) when is_list(L) ->
     lists:append(lists:map(fun(N) ->
         subsets(L, N)
     end, lists:seq(0, erlang:length(L)))).
+
+%% Gives the next permutation of L.
+-spec next_permutation(L :: [term()]) ->
+    {true, R :: [term()]} | false.
+next_permutation(L) when is_list(L) ->
+    case next_p_split(lists:reverse(L), []) of
+    {A, I, B} ->
+        {true, A ++ next_p_swap(I, B, [])};
+    false -> false
+    end.
+next_p_split([P, I | T], B) when I < P ->
+    {lists:reverse(T), I, lists:reverse(B, [P])};
+next_p_split([H | T], B) -> next_p_split(T, [H | B]);
+next_p_split(_, _) -> false.
+next_p_swap(I, [J | T], C) when I < J ->
+    [J | lists:reverse(C, [I | T])];
+next_p_swap(I, [H | T], C) -> next_p_swap(I, T, [H | C]).
+
+
+%% generates a list of all possible permutations of the elements in L.
+-spec permutations(L :: [term()]) ->
+    R :: [list()].
+permutations(L) when is_list(L) ->
+    permutations_helper({true, lists:sort(L)}, []).
+permutations_helper(false, Acc) ->
+    lists:reverse(Acc);
+permutations_helper({true, L}, Acc) ->
+    permutations_helper(next_permutation(L), [L | Acc]).
 
