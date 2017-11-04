@@ -4,7 +4,8 @@
 -export([quotient/2, remainder/2, quotient_remainder/2]).
 -export([gcd/2, gcd/1, lcm/2, lcm/1, power/2, power_mod/3]).
 -export([is_coprime/2, jacobi_symbol/2, is_prime/1, sign/1]).
--export([bit_length/1]).
+-export([bit_length/1, boole/1, unit_step/1]).
+-export([extended_gcd/2]).
 
 
 %% Gives true if N is divisible by M, and false if not.
@@ -345,4 +346,36 @@ nthrootrem(X, N, L, H) ->
     false ->
         nthrootrem(X, N, M + 1, H)
     end.
+
+
+%% Yields 1 if Expr is true and 0 if it is false.
+-spec boole(Expr :: boolean()) ->
+    R :: 0 | 1.
+boole(true) -> 1;
+boole(false) -> 0.
+
+
+%% Represents the unit step function, equal to 0
+%% for X < 0 and 1 for X >= 0.
+-spec unit_step(X :: integer()) ->
+    R :: 0 | 1.
+unit_step(X) when is_integer(X) ->
+    if
+        ?GT(X) -> 1;
+        true   -> 0
+    end.
+
+
+%% Gives the extended greatest common divisor of N and M.
+%% note: extended_gcd(0, 0) = {0, {0, 0}} for convenience.
+-spec extended_gcd(N :: integer(), M :: integer()) ->
+    {G :: integer(), {A :: integer(), B :: integer()}}.
+extended_gcd(N, M) when is_integer(N), is_integer(M) ->
+    {G, {A, B}} = extended_euclid(abs(N), abs(M)),
+    {G, {A * sign(N), B * sign(M)}}.
+extended_euclid(N, 0) -> {N, {1, 0}};
+extended_euclid(N, M) ->
+    {Q, R} = quotient_remainder(N, M),
+    {G, {A, B}} = extended_euclid(M, R),
+    {G, {B, A - Q * B}}.
 
