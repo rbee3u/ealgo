@@ -1,4 +1,4 @@
--module(ealgo_misc_tests).
+-module(ealgo_tests).
 -include_lib("eunit/include/eunit.hrl").
 
 
