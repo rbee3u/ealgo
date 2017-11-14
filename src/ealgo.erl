@@ -1,7 +1,38 @@
 -module(ealgo).
 -include("ealgo.hrl").
+-export([sign/1, boole/1, unit_step/1]).
 -export([cartesian_product/2, cartesian_product/1, cartesian_power/2]).
 -export([subsets/2, subsets/1, next_permutation/1, permutations/1]).
+
+
+%% Gives -1, 0, or 1 depending on whether X is negative, zero, or positive.
+-spec sign(X :: number()) ->
+    S :: -1 | 0 | 1.
+sign(X) when is_integer(X); is_float(X) ->
+    if
+        X < 0 -> -1;
+        X > 0 ->  1;
+        true  ->  0
+    end.
+
+
+%% Yields 1 if Expr is true and 0 if it is false.
+-spec boole(Expr :: boolean()) ->
+    R :: 0 | 1.
+boole(true) -> 1;
+boole(false) -> 0.
+
+
+%% Represents the unit step function, equal to 0
+%% for X < 0 and 1 for X >= 0.
+-spec unit_step(X :: number()) ->
+    R :: 0 | 1.
+unit_step(X) when is_integer(X); is_float(X) ->
+    if
+        X >= 0 -> 1;
+        true   -> 0
+    end.
+
 
 
 %% https://en.wikipedia.org/wiki/Cartesian_product
@@ -24,14 +55,14 @@ cartesian_product([H | T]) when is_list(H) ->
 %% Gives the N'th cartesian power of list L.
 -spec cartesian_power(L :: [term()], N :: non_neg_integer()) ->
     R :: [list()].
-cartesian_power(L, N) when is_list(L), is_integer(N), ?GTE(N) ->
+cartesian_power(L, N) when is_list(L), is_integer(N), N >= 0 ->
     cartesian_product(lists:duplicate(N, L)).
 
 
 %% Gives all subsets of L containing exactly N elements. 
 -spec subsets(L :: [term()], N :: non_neg_integer()) ->
     R :: [list()].
-subsets(L, N) when is_list(L), is_integer(N), ?GTE(N) ->
+subsets(L, N) when is_list(L), is_integer(N), N >= 0 ->
     case erlang:length(L) of
         R when R > N -> [];
         R -> subsets(L, N, R)

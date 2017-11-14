@@ -4,9 +4,8 @@
 -export([divisible/2, is_odd/1, is_even/1, multiplicity/2]).
 -export([quotient/2, remainder/2, quotient_remainder/2]).
 -export([gcd/2, gcd/1, lcm/2, lcm/1, power/2, power_mod/3]).
--export([is_coprime/2, jacobi_symbol/2, is_prime/1, sign/1]).
--export([bit_length/1, boole/1, unit_step/1]).
--export([extended_gcd/2]).
+-export([is_coprime/2, jacobi_symbol/2, is_prime/1]).
+-export([bit_length/1, nthrootrem/2, extended_gcd/2]).
 
 
 %% Generates a prime list where any element is not greater than N.
@@ -26,39 +25,40 @@ prime_array(N) when is_integer(N) ->
     array:from_list(prime_list(N)).
 
 
-%% Gives true if N is divisible by M, and false if not.
+%% Gives true if N is divisible by M, and false otherwise.
 -spec divisible(N :: integer(), M :: integer()) ->
     P :: boolean().
 divisible(N, M) when is_integer(N)
                    , is_integer(M)
-                   , ?NEQ(M) ->
-    ?EVEN(N, M).
+                   , M =/= 0 ->
+    N rem M =:= 0.
+
 
 %% Gives true if N is an odd integer, and false otherwise.
 -spec is_odd(N :: integer()) ->
     P :: boolean().
 is_odd(N) when is_integer(N) ->
-    ?ODD(N).
+    N rem 2 =/= 0.
+
 
 %% Gives true if N is an even integer, and false otherwise.
 -spec is_even(N :: integer()) ->
     P :: boolean().
 is_even(N) when is_integer(N) ->
-    ?EVEN(N).
+    N rem 2 =:= 0.
+
 
 %% Gives the highest power of A that divides N.
 -spec multiplicity(N :: integer(), A :: pos_integer()) ->
     Y :: non_neg_integer().
 multiplicity(N, A) when is_integer(N)
                       , is_integer(A)
-                      , ?NEQ(N)
-                      , ?GT(A, 1) ->
+                      , N =/= 0
+                      , A > 1 ->
     multiplicity(N, A, 0).
-multiplicity(N, A, Y) when ?ODD(N, A) ->
-    Y;
-multiplicity(N, A, Y) ->
-    multiplicity(N, A, Y, 1, A).
-multiplicity(N, A, Y, X, M) when ?ODD(N, M * M) ->
+multiplicity(N, A, Y) when N rem A =/= 0 -> Y;
+multiplicity(N, A, Y) -> multiplicity(N, A, Y, 1, A).
+multiplicity(N, A, Y, X, M) when N rem (M * M) =/= 0 ->
     multiplicity(N div M, A, Y + X);
 multiplicity(N, A, Y, X, M) ->
     multiplicity(N, A, Y, X + X, M * M).
@@ -75,27 +75,29 @@ multiplicity(N, A, Y, X, M) ->
     Q :: integer().
 quotient(N, M) when is_integer(N)
                   , is_integer(M)
-                  , ?NEQ(M) ->
+                  , M =/= 0 ->
     (N - remainder(N, M)) div M.
+
 
 %% Gives the remainder on division of N by M.
 -spec remainder(N :: integer(), M :: integer()) ->
     R :: integer().
 remainder(N, M) when is_integer(N)
                    , is_integer(M)
-                   , ?NEQ(M) ->
+                   , M =/= 0 ->
     case N rem M of
     R when R > 0, M < 0 -> R + M;
     R when R < 0, M > 0 -> R + M;
     R                   -> R
     end.
 
+
 %% Gives the quotient and remainder from division of N by M.
 -spec quotient_remainder(N :: integer(), M :: integer()) ->
     {Q :: integer(), R :: integer()}.
 quotient_remainder(N, M) when is_integer(N)
                             , is_integer(M)
-                            , ?NEQ(M) ->
+                            , M =/= 0 ->
     R = remainder(N, M), Q = (N - R) div M,
     {Q, R}.
 
@@ -110,12 +112,14 @@ gcd(N, M) when is_integer(N), is_integer(M) ->
 euclid(N, 0) -> N;
 euclid(N, M) -> euclid(M, N rem M).
 
+
 %% Gives the greatest common divisor of a list of integers.
 %% If the list has only one integer X, it returns gcd(X, 0);
 %% If the list is empty, for this corner case, it returns 0.
 -spec gcd(L :: [integer()]) ->
     GCD :: integer().
 gcd(L) when is_list(L) -> lists:foldl(fun gcd/2, 0, L).
+
 
 %% https://en.wikipedia.org/wiki/Least_common_multiple
 %% Gives the least common multiple of N and M.
@@ -127,6 +131,7 @@ lcm(N, M) when is_integer(N), is_integer(M) ->
     0 -> 0;
     P -> P div gcd(N, M)
     end.
+
 
 %% Gives the least common multiple of a list of integers.
 %% If the list has only one integer X, it returns lcm(X, 1);
@@ -143,14 +148,14 @@ lcm(L) when is_list(L) -> lists:foldl(fun lcm/2, 1, L).
     POWER :: integer().
 power(A, X) when is_integer(A)
                , is_integer(X)
-               , ?GTE(X) ->
+               , X >= 0 ->
     if
-    % ?EQ(A), ?EQ(X) undef
-    ?EQ(A),  ?NEQ(X) -> 0;
-    ?NEQ(A),  ?EQ(X) -> 1;
-    ?NEQ(A), ?NEQ(X) ->
+    % A =:= 0, X =:= 0 -> undefined
+    A =:= 0, X =/= 0 -> 0;
+    A =/= 0, X =:= 0 -> 1;
+    A =/= 0, X =/= 0 ->
         B = power(A, X div 2),
-        case ?EVEN(X) of
+        case is_even(X) of
             true -> B * B;
             _ -> A * B * B
         end
@@ -164,15 +169,15 @@ power(A, X) when is_integer(A)
 power_mod(A, X, M) when is_integer(A)
                       , is_integer(X)
                       , is_integer(M)
-                      , ?GTE(X)
-                      , ?NEQ(M) ->
+                      , X >= 0
+                      , M =/= 0 ->
     if
-    % ?EQ(A), ?EQ(X) undef
-    ?EQ(A),  ?NEQ(X) -> 0;
-    ?NEQ(A),  ?EQ(X) -> remainder(1, M);
-    ?NEQ(A), ?NEQ(X) ->
+    % A =:= 0, X =:= 0 -> undefined
+    A =:= 0, X =/= 0 -> 0;
+    A =/= 0, X =:= 0 -> remainder(1, M);
+    A =/= 0, X =/= 0 ->
         B = power_mod(A, X div 2, M),
-        case ?EVEN(X) of
+        case is_even(X) of
             true -> remainder(B * B, M);
             _ -> remainder(A * B * B, M)
         end
@@ -185,7 +190,7 @@ power_mod(A, X, M) when is_integer(A)
 -spec is_coprime(N :: integer(), M :: integer()) ->
     P :: boolean().
 is_coprime(N, M) when is_integer(N), is_integer(M) ->
-    ?EQ(gcd(N, M), 1).
+    gcd(N, M) =:= 1.
 
 
 %% https://en.wikipedia.org/wiki/Jacobi_symbol
@@ -209,12 +214,12 @@ jacobi_symbol(1, _N, C) ->
 jacobi_symbol(A, N, C) when (A rem 2) =:= 0 ->
     D = case is_even(S = multiplicity(A, 2)) of
         true -> C; false -> case (N rem 8) of
-            R when R =/= 3, R =/= 5 -> C; _ -> -C
+            R when R =:= 3; R =:= 5 -> (-C); _ -> C
         end end,
     jacobi_symbol(A bsr S, N, D);
 jacobi_symbol(A, N, C) ->
     D = case {A rem 4, N rem 4} of
-        {3, 3} -> -C; _ -> C
+            {3, 3} -> (-C); _ -> C
         end,
     jacobi_symbol(N rem A, A, D).
 
@@ -226,9 +231,9 @@ jacobi_symbol(A, N, C) ->
 is_prime(N) when is_integer(N) ->
     is_prime_helper(N).
 
-is_prime_helper(N) when N  <  2     -> false;
-is_prime_helper(N) when N =:= 2     -> true;
-is_prime_helper(N) when ?EVEN(N)    -> false;
+is_prime_helper(N) when N  <  2         -> false;
+is_prime_helper(N) when N =:= 2         -> true;
+is_prime_helper(N) when N rem 2 =:= 0   -> false;
 is_prime_helper(N) when N < 1000000 -> trial_division(N);
 is_prime_helper(N) ->
             trial_division(N) andalso miller_rabin(N, 2)
@@ -236,24 +241,24 @@ is_prime_helper(N) ->
 
 
 trial_division(N) -> trial_division(N, ?PRIME_LIST_1000).
-trial_division(_, [     ])                  -> true;
-trial_division(N, [H | _]) when H * H > N   -> true;
-trial_division(N, [H | _]) when ?EVEN(N, H) -> false;
+trial_division(_, [     ])                      -> true;
+trial_division(N, [H | _]) when H * H > N       -> true;
+trial_division(N, [H | _]) when N rem H =:= 0   -> false;
 trial_division(N, [_ | T]) -> trial_division(N, T).
 
 %% https://en.wikipedia.org/wiki/Miller%E2%80%93Rabin_primality_test
 miller_rabin(N, A) ->
     S = multiplicity(M = N - 1, 2),
     case power_mod(A, M bsr S, N) of
-    B when ?EQ(B,     1)      -> true;
-    B when ?EQ(B, N - 1)      -> true;
+    B when B =:=     1      -> true;
+    B when B =:= N - 1      -> true;
     B -> miller_rabin(N, B, S - 1)
     end.
 miller_rabin(_, _, 0) -> false;
 miller_rabin(N, A, S) ->
     case remainder(A * A, N) of
-    B when ?EQ(B,     1)      -> false;
-    B when ?EQ(B, N - 1)      -> true;
+    B when B =:=     1      -> false;
+    B when B =:= N - 1      -> true;
     B -> miller_rabin(N, B, S - 1)
     end.
 
@@ -262,7 +267,7 @@ strong_lucas(N) ->
     A = fun SearchA(X) ->
             case jacobi_symbol(X, N) of
             -1 -> X;
-            _  -> SearchA(-X-2*sign(X))
+            _  -> SearchA(-X-2*ealgo:sign(X))
             end
         end (5),
     Q = (1 - A) div 4,
@@ -286,7 +291,7 @@ strong_lucas(N, V, Q, S) ->
 lucas_uv(1, _, _, _) -> {1, 1};
 lucas_uv(D, A, Q, N) ->
     case lucas_uv(K = D div 2, A, Q, N) of
-    UV when ?ODD(D) ->
+    UV when D rem 2 =/= 0 ->
         TEMP = lucas_double(UV, K, Q, N),
         lucas_addone(TEMP, A, N);
     UV ->
@@ -308,18 +313,7 @@ lucas_addone({U, V}, A, N) ->
      remainder((VT + VD) div 2, N)}.
 
 is_square(N) ->
-    {_, R} = nthrootrem(N, 2), ?EQ(R).
-
-
-%% Gives -1, 0, or 1 depending on whether N is negative, zero, or positive.
--spec sign(N :: integer()) ->
-    S :: -1 | 0 | 1.
-sign(N) when is_integer(N) ->
-    if
-        ?LT(N) -> -1;
-        ?GT(N) ->  1;
-        true   ->  0
-    end.
+    {_, R} = nthrootrem(N, 2), R =:= 0.
 
 
 %% Gives the number of binary bits necessary to represent the integer N.
@@ -329,15 +323,15 @@ sign(N) when is_integer(N) ->
     S :: non_neg_integer().
 bit_length(N) when is_integer(N) ->
     bit_length(erlang:abs(N), 0).
-bit_length(N, R) when ?GTE(N, 16#10000000000000000) ->
+bit_length(N, R) when N >= 16#10000000000000000 ->
     E = erlang:external_size(N) * 8 - 64,  bit_length(N bsr  E, R +  E);
-bit_length(N, R) when ?GTE(N, 16#100000000) -> bit_length(N bsr 32, R + 32);
-bit_length(N, R) when ?GTE(N, 16#10000)     -> bit_length(N bsr 16, R + 16);
-bit_length(N, R) when ?GTE(N, 16#100)       -> bit_length(N bsr  8, R +  8);
-bit_length(N, R) when ?GTE(N, 16#10)        -> bit_length(N bsr  4, R +  4);
-bit_length(N, R) when ?GTE(N, 16#4)         -> bit_length(N bsr  2, R +  2);
-bit_length(N, R) when ?GTE(N, 16#2)         -> bit_length(N bsr  1, R +  1);
-bit_length(N, R) when ?EQ(N, 1); ?EQ(N)     -> N + R.
+bit_length(N, R) when N >= 16#100000000 -> bit_length(N bsr 32, R + 32);
+bit_length(N, R) when N >= 16#10000     -> bit_length(N bsr 16, R + 16);
+bit_length(N, R) when N >= 16#100       -> bit_length(N bsr  8, R +  8);
+bit_length(N, R) when N >= 16#10        -> bit_length(N bsr  4, R +  4);
+bit_length(N, R) when N >= 16#4         -> bit_length(N bsr  2, R +  2);
+bit_length(N, R) when N >= 16#2         -> bit_length(N bsr  1, R +  1);
+bit_length(N, R) when N =:= 1; N =:= 0  -> N + R.
 
 
 %% Gives the N'th root and remainder of integer X.
@@ -345,16 +339,16 @@ bit_length(N, R) when ?EQ(N, 1); ?EQ(N)     -> N + R.
     {Y :: non_neg_integer(), R :: non_neg_integer()}.
 nthrootrem(X, N) when is_integer(X)
                     , is_integer(N)
-                    , ?GTE(X)
-                    , ?GT(N) ->
+                    , X >= 0
+                    , N > 0 ->
     if
-    ?EQ(X); ?EQ(X, 1); ?EQ(N, 1) ->
+    X =:= 0; X =:= 1; N =:= 1 ->
         {X, 0};
     true ->
         S = (bit_length(X) - 1) div N,
         nthrootrem(X, N, 1 bsl S, 2 bsl S)
     end.
-nthrootrem(X, N, L, H) when ?GT(L, H) ->
+nthrootrem(X, N, L, H) when L > H ->
     {H, X - power(H, N)};
 nthrootrem(X, N, L, H) ->
     M = (L + H) div 2,
@@ -366,31 +360,13 @@ nthrootrem(X, N, L, H) ->
     end.
 
 
-%% Yields 1 if Expr is true and 0 if it is false.
--spec boole(Expr :: boolean()) ->
-    R :: 0 | 1.
-boole(true) -> 1;
-boole(false) -> 0.
-
-
-%% Represents the unit step function, equal to 0
-%% for X < 0 and 1 for X >= 0.
--spec unit_step(X :: integer()) ->
-    R :: 0 | 1.
-unit_step(X) when is_integer(X) ->
-    if
-        ?GT(X) -> 1;
-        true   -> 0
-    end.
-
-
 %% Gives the extended greatest common divisor of N and M.
 %% note: extended_gcd(0, 0) = {0, {0, 0}} for convenience.
 -spec extended_gcd(N :: integer(), M :: integer()) ->
     {G :: integer(), {A :: integer(), B :: integer()}}.
 extended_gcd(N, M) when is_integer(N), is_integer(M) ->
     {G, {A, B}} = extended_euclid(abs(N), abs(M)),
-    {G, {A * sign(N), B * sign(M)}}.
+    {G, {A * ealgo:sign(N), B * ealgo:sign(M)}}.
 extended_euclid(N, 0) -> {N, {1, 0}};
 extended_euclid(N, M) ->
     {Q, R} = quotient_remainder(N, M),
