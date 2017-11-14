@@ -1,6 +1,6 @@
--module(ealgo_number_theory_tests).
+-module(ealgo_ntl_tests).
 -include_lib("eunit/include/eunit.hrl").
--import(ealgo_number_theory, [
+-import(ealgo_ntl, [
       quotient/2
     , remainder/2
     , quotient_remainder/2

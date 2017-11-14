@@ -1,11 +1,29 @@
--module(ealgo_number_theory).
+-module(ealgo_ntl).
 -include("ealgo.hrl").
+-export([prime_list/1, prime_array/1]).
 -export([divisible/2, is_odd/1, is_even/1, multiplicity/2]).
 -export([quotient/2, remainder/2, quotient_remainder/2]).
 -export([gcd/2, gcd/1, lcm/2, lcm/1, power/2, power_mod/3]).
 -export([is_coprime/2, jacobi_symbol/2, is_prime/1, sign/1]).
 -export([bit_length/1, boole/1, unit_step/1]).
 -export([extended_gcd/2]).
+
+
+%% Generates a prime list where any element is not greater than N.
+-spec prime_list(N :: integer()) ->
+    PL :: [pos_integer()].
+prime_list(N) when is_integer(N) ->
+    prime_list(N, lists:seq(2, erlang:max(1, N))).
+prime_list(N, [H | T]) when H * H =< N ->
+    [H | prime_list(N, [X || X <- T, X rem H =/= 0])];
+prime_list(_, L) -> L.
+
+
+%% Generates a prime array where any element is not greater than N.
+-spec prime_array(N :: integer()) ->
+    PT :: array:array(pos_integer()).
+prime_array(N) when is_integer(N) ->
+    array:from_list(prime_list(N)).
 
 
 %% Gives true if N is divisible by M, and false if not.
