@@ -1,8 +1,9 @@
 -module(ealgo).
 -include("ealgo.hrl").
 -export([sign/1, boole/1, unit_step/1]).
--export([cartesian_product/2, cartesian_product/1, cartesian_power/2]).
--export([subsets/2, subsets/1, next_permutation/1, permutations/1]).
+-export([cartesian_product/1]).
+-export([combinations/1, combinations/2]).
+-export([next_permutation/1, permutations/1]).
 
 
 %% Gives -1, 0, or 1 depending on whether X is negative, zero, or positive.
@@ -34,53 +35,36 @@ unit_step(X) when is_integer(X); is_float(X) ->
     end.
 
 
-
 %% https://en.wikipedia.org/wiki/Cartesian_product
-%% Gives the cartesian product of list A and list B.
--spec cartesian_product(A :: [term()], B :: [term()]) ->
-    R :: [list()].
-cartesian_product(A, B) when is_list(A), is_list(B) ->
-    [[X, Y] || X <- A, Y <- B].
-
 %% Gives the cartesian product of a list of list.
--spec cartesian_product(LL :: [L :: [term()]]) ->
+-spec cartesian_product(L :: [list()]) ->
     R :: [list()].
-cartesian_product([]) ->
-    [];
-cartesian_product([H]) when is_list(H) ->
-    [[X] || X <- H];
-cartesian_product([H | T]) when is_list(H) ->
-    [[X | Y] || X <- H, Y <- cartesian_product(T)].
-
-%% Gives the N'th cartesian power of list L.
--spec cartesian_power(L :: [term()], N :: non_neg_integer()) ->
-    R :: [list()].
-cartesian_power(L, N) when is_list(L), is_integer(N), N >= 0 ->
-    cartesian_product(lists:duplicate(N, L)).
+cartesian_product([     ]) -> [[]];
+cartesian_product([A | T]) ->
+    B = cartesian_product(T),
+    [[X | Y] || X <- A, Y <- B].
 
 
-%% Gives all subsets of L containing exactly N elements. 
--spec subsets(L :: [term()], N :: non_neg_integer()) ->
+%% Gives all combinations of L. 
+-spec combinations(L :: [term()]) ->
     R :: [list()].
-subsets(L, N) when is_list(L), is_integer(N), N >= 0 ->
-    case erlang:length(L) of
-        R when R > N -> [];
-        R -> subsets(L, N, R)
-    end.
-subsets(_, 0, _) -> [[ ]];
-subsets(L, N, N) -> [ L ];
-subsets([H | T], N, R) ->
-    A = subsets(T, N - 1, R - 1),
-    B = subsets(T, N    , R - 1),
-    [[H | E] || E <- A] ++ B.
+combinations([     ]) -> [[]];
+combinations([H | T]) ->
+    A = B = combinations(T),
+    A ++ [[H | Y] || Y <- B].
 
-%% Gives all subsets of L. 
--spec subsets(L :: [term()]) ->
+
+%% Gives all combinations of L containing exactly N elements. 
+-spec combinations(L :: [term()], N :: non_neg_integer()) ->
     R :: [list()].
-subsets(L) when is_list(L) ->
-    lists:append(lists:map(fun(N) ->
-        subsets(L, N)
-    end, lists:seq(0, erlang:length(L)))).
+combinations([     ], _) -> [[]];
+combinations(   _   , 0) -> [[]];
+combinations([H | T], N) when N > 0 ->
+    A = combinations(T, N    ),
+    B = combinations(T, N - 1),
+    A ++ [[H | Y] || Y <- B].
+
+
 
 %% Gives the next permutation of L.
 -spec next_permutation(L :: [term()]) ->
