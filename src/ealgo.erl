@@ -1,39 +1,10 @@
 -module(ealgo).
 -include("ealgo.hrl").
--export([sign/1, boole/1, unit_step/1]).
 -export([cartesian_product/1]).
 -export([combinations/1, combinations/2]).
--export([permutations/1]).
+-export([permutations/1, permutations/2]).
 -export([next_permutation/1]).
-
-
-%% Gives -1, 0, or 1 depending on whether X is negative, zero, or positive.
--spec sign(X :: number()) ->
-    S :: -1 | 0 | 1.
-sign(X) when is_integer(X); is_float(X) ->
-    if
-        X < 0 -> -1;
-        X > 0 ->  1;
-        true  ->  0
-    end.
-
-
-%% Yields 1 if Expr is true and 0 if it is false.
--spec boole(Expr :: boolean()) ->
-    R :: 0 | 1.
-boole(true) -> 1;
-boole(false) -> 0.
-
-
-%% Represents the unit step function, equal to 0
-%% for X < 0 and 1 for X >= 0.
--spec unit_step(X :: number()) ->
-    R :: 0 | 1.
-unit_step(X) when is_integer(X); is_float(X) ->
-    if
-        X >= 0 -> 1;
-        true   -> 0
-    end.
+-export([sign/1, boole/1, ustep/1]).
 
 
 %% https://en.wikipedia.org/wiki/Cartesian_product
@@ -55,20 +26,22 @@ combinations([H | T]) ->
     A ++ [[H | Y] || Y <- B].
 
 
-%% Gives all combinations of L containing exactly N elements. 
+%% Gives all combinations of L containing exactly N elements.
 -spec combinations(L :: [term()], N :: non_neg_integer()) ->
     R :: [list()].
-combinations(L, N) when is_list(L), is_integer(N), N >= 0 ->
-    combinations_h2(L, N).
-combinations_h2(   _   , 0) -> [[]];
-combinations_h2([     ], _) -> [  ];
-combinations_h2([H | T], N) ->
-    A = combinations_h2(T, N - 1),
-    B = combinations_h2(T, N    ),
+combinations(L, N) when not is_list(L)
+                      ; not is_integer(N)
+                      ; not (N >= 0) ->
+    erlang:error(badarg);
+combinations(   _   , 0) -> [[]];
+combinations([     ], _) -> [  ];
+combinations([H | T], N) ->
+    A = combinations(T, N - 1),
+    B = combinations(T, N    ),
     [[H | X] || X <- A] ++ B.
 
 
-%% generates a list of all possible permutations of the elements in L.
+%% Gives all permutations of L.
 -spec permutations(L :: [term()]) ->
     R :: [list()].
 permutations([]) -> [[]];
@@ -81,23 +54,67 @@ permutations_h1([H | T], C) ->
     [[H | X] || X <- A] ++ B.
 
 
+%% Gives all permutations of L containing exactly N elements.
+-spec permutations(L :: [term()], N :: non_neg_integer()) ->
+    R :: [list()].
+permutations(L, N) when not is_list(L)
+                      ; not is_integer(N)
+                      ; not (N >= 0) ->
+    erlang:error(badarg);
+permutations( _ , 0) -> [[]];
+permutations([ ], _) -> [  ];
+permutations( L , N) ->
+    permutations_h2(L, N, []).
+permutations_h2([     ], _, _) -> [];
+permutations_h2([H | T], N, C) ->
+    A = permutations(lists:reverse(C, T), N - 1),
+    B = permutations_h2(T, N, [H | C]),
+    [[H | X] || X <- A] ++ B.
+
 
 %% Gives the next permutation of L.
 -spec next_permutation(L :: [term()]) ->
     {true, R :: [term()]} | false.
 next_permutation(L) when is_list(L) ->
-    case next_p_split(lists:reverse(L), []) of
-    {A, I, B} ->
-        {true, A ++ next_p_swap(I, B, [])};
-    false -> false
-    end.
-next_p_split([P, I | T], B) when I < P ->
-    {lists:reverse(T), I, lists:reverse(B, [P])};
-next_p_split([H | T], B) -> next_p_split(T, [H | B]);
-next_p_split(_, _) -> false.
-next_p_swap(I, [J | T], C) when I < J ->
-    [J | lists:reverse(C, [I | T])];
-next_p_swap(I, [H | T], C) -> next_p_swap(I, T, [H | C]).
+    next_permutation_h1(lists:reverse(L), []).
+next_permutation_h1([J, I | A], B) when I < J ->
+    S = next_permutation_h2([I | lists:reverse(B, [J])], []),
+    {true, lists:reverse(A, S)};
+next_permutation_h1([H | A], B) ->
+    next_permutation_h1(A, [H | B]);
+next_permutation_h1(_, _) -> false.
+next_permutation_h2([I, J | A], B) when I < J ->
+    [J | lists:reverse(B, [I | A])];
+next_permutation_h2([I, H | A], B) ->
+    next_permutation_h2([I | A], [H | B]).
 
 
+
+%% Gives -1, 0, or 1 depending on whether X is negative, zero, or positive.
+-spec sign(X :: number()) ->
+    S :: -1 | 0 | 1.
+sign(X) when not is_integer(X)
+           , not is_float(X) ->
+    erlang:error(badarg);
+sign(X) when X > 0 ->  1;
+sign(X) when X < 0 -> -1;
+sign(_)            ->  0.
+
+
+%% Yields 1 if Expr is true and 0 if it is false.
+-spec boole(Expr :: boolean()) ->
+    R :: 0 | 1.
+boole( true) -> 1;
+boole(false) -> 0.
+
+
+%% Represents the unit step function, equal to 0
+%% for X < 0 and 1 for X >= 0.
+-spec ustep(X :: number()) ->
+    R :: 0 | 1.
+ustep(X) when not is_integer(X)
+            , not is_float(X) ->
+    erlang:error(badarg);
+ustep(X) when X >= 0 -> 1;
+ustep(_)             -> 0.
 
