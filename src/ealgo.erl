@@ -3,7 +3,8 @@
 -export([sign/1, boole/1, unit_step/1]).
 -export([cartesian_product/1]).
 -export([combinations/1, combinations/2]).
--export([next_permutation/1, permutations/1]).
+-export([permutations/1]).
+-export([next_permutation/1]).
 
 
 %% Gives -1, 0, or 1 depending on whether X is negative, zero, or positive.
@@ -57,12 +58,27 @@ combinations([H | T]) ->
 %% Gives all combinations of L containing exactly N elements. 
 -spec combinations(L :: [term()], N :: non_neg_integer()) ->
     R :: [list()].
-combinations([     ], _) -> [[]];
-combinations(   _   , 0) -> [[]];
-combinations([H | T], N) when N > 0 ->
-    A = combinations(T, N    ),
-    B = combinations(T, N - 1),
-    A ++ [[H | Y] || Y <- B].
+combinations(L, N) when is_list(L), is_integer(N), N >= 0 ->
+    combinations_h2(L, N).
+combinations_h2(   _   , 0) -> [[]];
+combinations_h2([     ], _) -> [  ];
+combinations_h2([H | T], N) ->
+    A = combinations_h2(T, N - 1),
+    B = combinations_h2(T, N    ),
+    [[H | X] || X <- A] ++ B.
+
+
+%% generates a list of all possible permutations of the elements in L.
+-spec permutations(L :: [term()]) ->
+    R :: [list()].
+permutations([]) -> [[]];
+permutations(L) when is_list(L) ->
+    permutations_h1(L, []).
+permutations_h1([     ], _) -> [];
+permutations_h1([H | T], C) ->
+    A = permutations(lists:reverse(C, T)),
+    B = permutations_h1(T, [H | C]),
+    [[H | X] || X <- A] ++ B.
 
 
 
@@ -82,29 +98,6 @@ next_p_split(_, _) -> false.
 next_p_swap(I, [J | T], C) when I < J ->
     [J | lists:reverse(C, [I | T])];
 next_p_swap(I, [H | T], C) -> next_p_swap(I, T, [H | C]).
-
-
-%% generates a list of all possible permutations of the elements in L.
--spec permutations(L :: [term()]) ->
-    R :: [list()].
-permutations(L) when is_list(L) ->
-    permutations_helper({true, lists:sort(L)}, []).
-permutations_helper(false, Acc) ->
-    lists:reverse(Acc);
-permutations_helper({true, L}, Acc) ->
-    permutations_helper(next_permutation(L), [L | Acc]).
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 
