@@ -5,6 +5,7 @@
 -export([permutations/1, permutations/2]).
 -export([next_permutation/1]).
 -export([sign/1, boole/1, ustep/1]).
+-export([rabin_karp/2, rabin_karp/3]).
 
 
 %% https://en.wikipedia.org/wiki/Cartesian_product
@@ -117,4 +118,53 @@ ustep(X) when not is_integer(X)
     erlang:error(badarg);
 ustep(X) when X >= 0 -> 1;
 ustep(_)             -> 0.
+
+
+%% https://en.wikipedia.org/wiki/Rabin%E2%80%93Karp_algorithm
+%% Gives a list of the starting character positions at which
+%% Pattern appears as a substring of String.
+-spec rabin_karp(String :: string(), Pattern :: string()) ->
+    PositionList :: [pos_integer()].
+rabin_karp(String, Pattern) when is_list(String), is_list(Pattern) ->
+    rabin_karp(String, Pattern, -1).
+
+
+%% Includes the first N occurrences of Pattern, all if N < 0.
+-define(RABIN_KARP_BASE, 257).
+-define(RABIN_KARP_MODU, 1299709).
+-spec rabin_karp(String :: string(), Pattern :: string(), N :: integer()) ->
+    PositionList :: [pos_integer()].
+rabin_karp(String, Pattern, N) when  length(String) < length(Pattern), is_integer(N) ->
+    [];
+rabin_karp(String, Pattern, N) when is_list(String), is_list(Pattern), is_integer(N) ->
+    PatSize = erlang:length(Pattern),
+    Base = 257,
+    Modu = 1299709,
+    MSB = ealgo_ntl:power_mod(Base, PatSize, Modu),
+    Iterate = fun(Hash, Out, In) ->
+        ealgo_ntl:remainder((Hash * Base) - (Out * MSB) + In, Modu)
+    end,
+    PatHash = lists:foldl(fun(X, Acc) -> Iterate(Acc, 0, X) end, 0, Pattern),
+    Accept = fun(Window, WinHash) ->
+        (WinHash =:= PatHash) andalso lists:prefix(Pattern, Window)
+    end,
+    {Window, InList} = lists:split(PatSize, String),
+    WinHash = lists:foldl(fun(X, Acc) -> Iterate(Acc, 0, X) end, 0, Window),
+    rabin_karp_h1(Iterate, Accept, 1, String, WinHash, InList, N, []).
+rabin_karp_h1(_Iterate, _Accept, _Pos, _OutList, _WinHash, _InList, 0, Acc) ->
+    lists:reverse(Acc);
+rabin_karp_h1(_Iterate, Accept, Pos, OutList, WinHash, [], _N, Acc) ->
+    case Accept(OutList, WinHash) of
+    true ->
+        lists:reverse(Acc, [Pos]);
+    false ->
+        lists:reverse(Acc)
+    end;
+rabin_karp_h1(Iterate, Accept, Pos, [Out | OutListT] = OutList, WinHash, [In | InListT], N, Acc) ->
+    case Accept(OutList, WinHash) of
+    true ->
+        rabin_karp_h1(Iterate, Accept, Pos + 1, OutListT, Iterate(WinHash, Out, In), InListT, N - 1, [Pos | Acc]);
+    false ->
+        rabin_karp_h1(Iterate, Accept, Pos + 1, OutListT, Iterate(WinHash, Out, In), InListT, N    ,        Acc)
+    end.
 
