@@ -20,7 +20,9 @@ all_test_() ->
             {<<"test combinations">>
                 , fun test_combinations/0},
             {<<"test permutations">>
-                , fun test_permutations/0}
+                , fun test_permutations/0},
+            {<<"test next_permutation">>
+                , fun test_next_permutation/0}
         ]
     }.
 
@@ -94,5 +96,29 @@ test_permutations() ->
                 , [[a,b,c], [a,c,b], [b,a,c], [b,c,a], [c,a,b], [c,b,a]]),
     ?assertEqual(permutations([a, b, c], 4)
                 , []),
+    ok.
+
+
+test_next_permutation() ->
+    ?assertEqual(next_permutation([])
+                , false),
+    ?assertEqual(next_permutation([a])
+                , false),
+    ?assertEqual(next_permutation([a, b])
+                , {true, [b, a]}),
+    ?assertEqual(next_permutation([b, a])
+                , false),
+    ?assertEqual(next_permutation([a, b, c])
+                , {true, [a, c, b]}),
+    ?assertEqual(next_permutation([a, c, b])
+                , {true, [b, a, c]}),
+    ?assertEqual(next_permutation([b, a, c])
+                , {true, [b, c, a]}),
+    ?assertEqual(next_permutation([b, c, a])
+                , {true, [c, a, b]}),
+    ?assertEqual(next_permutation([c, a, b])
+                , {true, [c, b, a]}),
+    ?assertEqual(next_permutation([c, b, a])
+                , false),
     ok.
 
