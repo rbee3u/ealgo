@@ -1,11 +1,15 @@
 -module(ealgo).
 -include("ealgo.hrl").
--export([cartesian_product/1]).
--export([combinations/1, combinations/2]).
--export([permutations/1, permutations/2]).
--export([next_permutation/1]).
--export([rabin_karp/2, rabin_karp/3]).
--export([sgn/1, boole/1, ustep/1, id/1]).
+-export([cartesian_product/1,
+         combinations/1, combinations/2,
+         permutations/1, permutations/2,
+         next_permutation/1,
+         rabin_karp/2, rabin_karp/3,
+         sgn/1, boole/1, ustep/1, id/1,
+         shuffle/1,
+         select_by_weight/1, select_amount_by_weight/2
+        ]).
+
 
 
 %% https://en.wikipedia.org/wiki/Cartesian_product
@@ -168,3 +172,54 @@ ustep(_)             -> 0.
 id(X) -> X.
 
 
+-spec shuffle(L :: list()) ->
+    R :: any().
+shuffle(L) ->
+    L2 = [{rand:uniform(100), Item} || Item <- L],
+    [ShuffledItem || {_, ShuffledItem} <- lists:sort(L2)].
+
+-type key() :: any().
+-type weight() :: integer.
+-type weight_item() :: [{key(), weight()}].
+-spec select_by_weight(List :: list(weight_item())) ->
+    R :: {ok, key()} | {error, _}.
+select_by_weight(List) ->
+    AllWeight = lists:sum([Weight || {_Item, Weight} <- List, Weight >= 0]),
+    case AllWeight > 0 of
+        true ->
+            RandomWeight = rand:uniform(AllWeight),
+            select_by_weight(List, RandomWeight);
+        false ->
+            {error, <<"AllWeightMustGreaterThanZero">>}
+    end.
+
+select_by_weight(List, RandomWeight) ->
+    [{Item, Weight} | RestList] = List,
+    if
+        RandomWeight =< Weight ->
+            {ok, Item};
+        RandomWeight > Weight ->
+            select_by_weight(RestList, RandomWeight - Weight)
+    end.
+
+-spec select_amount_by_weight(List :: list(weight_item()), Amount :: integer) ->
+    R :: {ok, list(any)} | {error, _}.
+select_amount_by_weight(_List, Amount) when Amount =< 0 ->
+    {error, <<"AmountMustGreaterThanZero">>};
+select_amount_by_weight(List, Amount) when length(List) == Amount  ->
+    SelectedKeys = [Key || {Key, _} <- List],
+    {ok, SelectedKeys};
+select_amount_by_weight(List, Amount) when length(List) < Amount ->
+    {error, <<"ListLengthMustGreaterThanAmount">>};
+select_amount_by_weight(List, Amount) ->
+    select_amount_by_weight(List, Amount, []).
+
+
+select_amount_by_weight(_List, 0, SelectedKeys) ->
+    SelectedKeys;
+select_amount_by_weight([], _Amount, SelectedKeys) ->
+    SelectedKeys;
+select_amount_by_weight(List, Amount, SelectedKeys) ->
+    {ok, SelectedKey} = select_by_weight(List),
+    SelectedList = lists:keydelete(SelectedKey, 1, List),
+    select_amount_by_weight(SelectedList, Amount-1, [SelectedKey | SelectedKeys]).
