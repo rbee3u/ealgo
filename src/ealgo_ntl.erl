@@ -1,5 +1,6 @@
 -module(ealgo_ntl).
 -include("ealgo.hrl").
+-import(ealgo, [sgn/1, boole/1, id/1]).
 -export([prime_list/1, prime_array/1]).
 -export([divisible/2, is_odd/1, is_even/1, multiplicity/2]).
 -export([quotient/2, remainder/2, quotient_remainder/2]).
@@ -267,7 +268,7 @@ strong_lucas(N) ->
     A = fun SearchA(X) ->
             case jacobi_symbol(X, N) of
             -1 -> X;
-            _  -> SearchA(-X-2*ealgo:sign(X))
+            _  -> SearchA(-X-2*sgn(X))
             end
         end (5),
     Q = (1 - A) div 4,
@@ -366,7 +367,7 @@ nthrootrem(X, N, L, H) ->
     {G :: integer(), {A :: integer(), B :: integer()}}.
 extended_gcd(N, M) when is_integer(N), is_integer(M) ->
     {G, {A, B}} = extended_euclid(abs(N), abs(M)),
-    {G, {A * ealgo:sign(N), B * ealgo:sign(M)}}.
+    {G, {A * sgn(N), B * sgn(M)}}.
 extended_euclid(N, 0) -> {N, {1, 0}};
 extended_euclid(N, M) ->
     {Q, R} = quotient_remainder(N, M),
