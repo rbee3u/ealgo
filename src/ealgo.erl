@@ -202,6 +202,7 @@ select_by_weight(List, RandomWeight) ->
             select_by_weight(RestList, RandomWeight - Weight)
     end.
 
+
 -spec select_amount_by_weight(List :: list(weight_item()), Amount :: integer) ->
     R :: {ok, list(any)} | {error, _}.
 select_amount_by_weight(_List, Amount) when Amount =< 0 ->
@@ -213,7 +214,6 @@ select_amount_by_weight(List, Amount) when length(List) < Amount ->
     {error, <<"ListLengthMustGreaterThanAmount">>};
 select_amount_by_weight(List, Amount) ->
     select_amount_by_weight(List, Amount, []).
-
 
 select_amount_by_weight(_List, 0, SelectedKeys) ->
     SelectedKeys;
