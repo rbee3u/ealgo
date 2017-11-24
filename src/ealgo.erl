@@ -7,7 +7,8 @@
          rabin_karp/2, rabin_karp/3,
          sgn/1, boole/1, ustep/1, id/1,
          shuffle/1,
-         select_by_weight/1, select_amount_by_weight/2
+         select_by_weight/1, select_amount_by_weight/2,
+         get_rand_elem/1, get_rand_elems/2
         ]).
 
 
@@ -223,3 +224,37 @@ select_amount_by_weight(List, Amount, SelectedKeys) ->
     {ok, SelectedKey} = select_by_weight(List),
     SelectedList = lists:keydelete(SelectedKey, 1, List),
     select_amount_by_weight(SelectedList, Amount-1, [SelectedKey | SelectedKeys]).
+
+
+-spec get_rand_elem(List :: list()) ->
+    R :: undefined | any().
+get_rand_elem([]) ->
+    undefined;
+get_rand_elem(List) ->
+    {ok, [Elem]} = get_rand_elems(List, 1),
+    Elem.
+
+
+-spec get_rand_elems(List :: list(), Amount :: integer) ->
+    R :: {ok, list()} | {error, _}.
+get_rand_elems([], _Amount) ->
+    {error, <<"ListEmpty">>};
+get_rand_elems(_List, Amount) when Amount =< 0 ->
+    {error, <<"ArgAmountIllegal">>};
+get_rand_elems(List, Amount) when length(List) == Amount ->
+    {ok, List};
+get_rand_elems(List, Amount) when length(List) < Amount ->
+    {error, <<"NoEnoughListElems">>};
+get_rand_elems(List, Amount) ->
+    get_rand_elems(Amount, List, length(List), [], 0).
+
+get_rand_elems(_Amount, [], _ListLen, Elems, _ElemsAmount) ->
+    {ok, Elems};
+get_rand_elems(Amount, _List, _ListLen, Elems, ElemsAmount) when ElemsAmount >= Amount ->
+    {ok, Elems};
+get_rand_elems(Amount, List, ListLen, Elems, ElemsAmount) ->
+    Index = rand:uniform(ListLen),
+    Elem = lists:nth(Index, List),
+    RestList = lists:delete(Elem, List),
+    NewElems = [Elem | Elems],
+    get_rand_elems(Amount, RestList, ListLen-1, NewElems, ElemsAmount+1).
