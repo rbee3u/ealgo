@@ -1,5 +1,4 @@
 -module(ealgo).
--include("ealgo.hrl").
 -export([
       cartesian_product/1
     , combinations/1
@@ -22,136 +21,167 @@
 
 
 %% https://en.wikipedia.org/wiki/Cartesian_product
-%% Gives the cartesian product of a list of list.
+%% Returns the Cartesian product of the input lists. An empty input returns
+%% [[]]; any empty input list makes the product empty.
 -spec cartesian_product(L :: [[term()]]) ->
     R :: [[term()]].
 cartesian_product([     ]) -> [[]];
-cartesian_product([A | T]) ->
-    B = cartesian_product(T),
-    [[X | Y] || X <- A, Y <- B].
+cartesian_product([Choices | Rest]) ->
+    TailProducts = cartesian_product(Rest),
+    [[Choice | Product] || Choice <- Choices, Product <- TailProducts].
 
 
-%% Gives all combinations of L.
+%% Returns all combinations of L, preserving input order within each result.
+%% Positions are distinct, so repeated values can produce duplicate results.
 -spec combinations(L :: [term()]) ->
     R :: [[term()]].
 combinations([     ]) -> [[]];
 combinations([H | T]) ->
-    A = B = combinations(T),
-    A ++ [[H | Y] || Y <- B].
+    TailCombinations = combinations(T),
+    TailCombinations ++ [[H | Combination] || Combination <- TailCombinations].
 
 
-%% Gives all combinations of L containing exactly N elements.
+%% Returns combinations of L with exactly N elements, preserving input order.
+%% Positions are distinct. N = 0 returns [[]]; N > length(L) returns [].
 -spec combinations(L :: [term()], N :: non_neg_integer()) ->
     R :: [[term()]].
 combinations(L, N) when not is_list(L)
                       ; not is_integer(N)
-                      ; not (N >= 0) ->
+                      ; N < 0 ->
     erlang:error(badarg);
 combinations(   _   , 0) -> [[]];
-combinations([     ], _) -> [  ];
-combinations([H | T], N) ->
-    A = combinations(T, N - 1),
-    B = combinations(T, N    ),
-    [[H | X] || X <- A] ++ B.
+combinations(L, N) ->
+    combinations(L, N, length(L)).
+
+combinations(_, N, Remaining) when N > Remaining -> [];
+combinations(_, 0, _) -> [[]];
+combinations(L, N, N) -> [L];
+combinations([H | T], N, Remaining) ->
+    TailCombinations = combinations(T, N - 1, Remaining - 1),
+    WithoutHead = combinations(T, N, Remaining - 1),
+    [[H | Combination] || Combination <- TailCombinations] ++ WithoutHead.
 
 
-%% Gives all permutations of L.
+%% Returns all permutations of L. Positions are distinct, so repeated values
+%% can produce duplicate results. The empty list returns [[]].
 -spec permutations(L :: [term()]) ->
     R :: [[term()]].
 permutations([]) -> [[]];
 permutations(L) when is_list(L) ->
-    permutations_h1(L, []).
+    permutations_from_choices(L, []).
 
-permutations_h1([     ], _) -> [];
-permutations_h1([H | T], C) ->
-    A = permutations(lists:reverse(C, T)),
-    B = permutations_h1(T, [H | C]),
-    [[H | X] || X <- A] ++ B.
+permutations_from_choices([], _ReversedSkipped) -> [];
+permutations_from_choices([H | T], ReversedSkipped) ->
+    RemainingChoices = lists:reverse(ReversedSkipped, T),
+    RemainingPermutations = permutations(RemainingChoices),
+    OtherPermutations = permutations_from_choices(T, [H | ReversedSkipped]),
+    [[H | Permutation] || Permutation <- RemainingPermutations] ++ OtherPermutations.
 
 
-%% Gives all permutations of L containing exactly N elements.
+%% Returns permutations of L with exactly N elements, treating positions as
+%% distinct. N = 0 returns [[]]; N > length(L) returns [].
 -spec permutations(L :: [term()], N :: non_neg_integer()) ->
     R :: [[term()]].
 permutations(L, N) when not is_list(L)
                       ; not is_integer(N)
-                      ; not (N >= 0) ->
+                      ; N < 0 ->
     erlang:error(badarg);
 permutations( _ , 0) -> [[]];
+permutations( L , 1) -> [[X] || X <- L];
 permutations([ ], _) -> [  ];
 permutations( L , N) ->
-    permutations_h2(L, N, []).
+    permutations_from_choices(L, N, []).
 
-permutations_h2([     ], _, _) -> [];
-permutations_h2([H | T], N, C) ->
-    A = permutations(lists:reverse(C, T), N - 1),
-    B = permutations_h2(T, N, [H | C]),
-    [[H | X] || X <- A] ++ B.
+permutations_from_choices([], _N, _ReversedSkipped) -> [];
+permutations_from_choices([H | T], N, ReversedSkipped) ->
+    RemainingChoices = lists:reverse(ReversedSkipped, T),
+    RemainingPermutations = permutations(RemainingChoices, N - 1),
+    OtherPermutations = permutations_from_choices(T, N, [H | ReversedSkipped]),
+    [[H | Permutation] || Permutation <- RemainingPermutations] ++ OtherPermutations.
 
 
-%% Gives the next permutation of L.
+%% Returns {true, Next} for the next lexicographic permutation under Erlang
+%% term ordering, or false when no successor exists.
 -spec next_permutation(L :: [term()]) ->
     {true, R :: [term()]} | false.
 next_permutation(L) when is_list(L) ->
-    next_permutation_h1(lists:reverse(L), []).
+    next_permutation_find_pivot(lists:reverse(L), []).
 
-next_permutation_h1([J, I | A], B) when I < J ->
-    S = next_permutation_h2([I | lists:reverse(B, [J])], []),
-    {true, lists:reverse(A, S)};
-next_permutation_h1([H | A], B) ->
-    next_permutation_h1(A, [H | B]);
-next_permutation_h1(_, _) -> false.
+next_permutation_find_pivot([Next, Pivot | ReversedPrefix], DescendingSuffix) when Pivot < Next ->
+    AscendingSuffix = lists:reverse(DescendingSuffix, [Next]),
+    NextPivotAndSuffix = next_permutation_swap_pivot(Pivot, AscendingSuffix, []),
+    {true, lists:reverse(ReversedPrefix, NextPivotAndSuffix)};
+next_permutation_find_pivot([H | ReversedPrefix], DescendingSuffix) ->
+    next_permutation_find_pivot(ReversedPrefix, [H | DescendingSuffix]);
+next_permutation_find_pivot(_, _) -> false.
 
-next_permutation_h2([I, J | A], B) when I < J ->
-    [J | lists:reverse(B, [I | A])];
-next_permutation_h2([I, H | A], B) ->
-    next_permutation_h2([I | A], [H | B]).
+next_permutation_swap_pivot(Pivot, [Successor | Rest], ReversedSkipped) when Pivot < Successor ->
+    [Successor | lists:reverse(ReversedSkipped, [Pivot | Rest])];
+next_permutation_swap_pivot(Pivot, [H | Rest], ReversedSkipped) ->
+    next_permutation_swap_pivot(Pivot, Rest, [H | ReversedSkipped]).
 
 
 %% https://en.wikipedia.org/wiki/Rabin%E2%80%93Karp_algorithm
-%% Gives a list of the starting character positions at which
-%% Pattern appears as a substring of String.
+%% Returns one-based match positions in ascending order, including overlaps.
+%% Positions count character-list elements. An empty pattern matches at every
+%% position from 1 through length(String) + 1.
 -spec rabin_karp(String :: string(), Pattern :: string()) ->
     PositionList :: [pos_integer()].
 rabin_karp(String, Pattern) when is_list(String), is_list(Pattern) ->
     rabin_karp(String, Pattern, -1).
 
 
-%% Includes the first N occurrences of Pattern, all if N < 0.
+%% As rabin_karp/2, but returns at most N matches. N < 0 returns all matches;
+%% N = 0 returns [].
 -spec rabin_karp(String :: string(), Pattern :: string(), N :: integer()) ->
     PositionList :: [pos_integer()].
-rabin_karp(String, Pattern, N) when  length(String) < length(Pattern), is_integer(N) ->
-    [];
 rabin_karp(String, Pattern, N) when is_list(String), is_list(Pattern), is_integer(N) ->
-    MSB = ealgo_ntl:power_mod(Base = 257, PatSize = length(Pattern), Modu = 1299709),
-    Iterate = fun(Hash, Out, In) ->
-        ealgo_ntl:remainder((Hash * Base) - (Out * MSB) + In, Modu)
+    Base = 257,
+    PatternSize = length(Pattern),
+    Modulus = 1299709,
+    OutgoingFactor = ealgo_ntl:power_mod(Base, PatternSize, Modulus),
+    RollHash = fun(Hash, Out, In) ->
+        ealgo_ntl:remainder((Hash * Base) - (Out * OutgoingFactor) + In, Modulus)
     end,
-    PatHash = lists:foldl(fun(X, Acc) -> Iterate(Acc, 0, X) end, 0, Pattern),
-    Accept = fun(OutList, WinHash) ->
-        (PatHash =:= WinHash) andalso lists:prefix(Pattern, OutList)
+    PatternHash = lists:foldl(fun(X, Acc) -> RollHash(Acc, 0, X) end, 0, Pattern),
+    Matches = fun(WindowStart, WindowHash) ->
+        (PatternHash =:= WindowHash) andalso lists:prefix(Pattern, WindowStart)
     end,
-    {Window, InList} = lists:split(PatSize, OutList = String),
-    WinHash = lists:foldl(fun(X, Acc) -> Iterate(Acc, 0, X) end, 0, Window),
-    rabin_karp_h1(Iterate, Accept, 1, OutList, WinHash, Accept(String, WinHash), InList, N, []).
+    case rabin_karp_window(String, PatternSize, RollHash, 0) of
+        false -> [];
+        {WindowHash, Unread} ->
+            rabin_karp_scan(RollHash, Matches, 1, String, WindowHash,
+                            Unread, N, [])
+    end.
 
-rabin_karp_h1(_, _,   _, _, _,     _,  _, 0, Acc) -> lists:reverse(Acc, [   ]);
-rabin_karp_h1(_, _,   _, _, _, false, [], _, Acc) -> lists:reverse(Acc, [   ]);
-rabin_karp_h1(_, _, Pos, _, _,  true, [], _, Acc) -> lists:reverse(Acc, [Pos]);
-rabin_karp_h1(Iterate, Accept, Pos, [Out | OutList2], WinHash, IsMatch, [In | InList2], N, Acc) ->
-    WinHash2 = Iterate(WinHash, Out, In), IsMatch2 = Accept(OutList2, WinHash2),
-    case IsMatch of
-        false -> Pos2 = Pos + 1, N2 = N - 0, Acc2 =        Acc;
-        true  -> Pos2 = Pos + 1, N2 = N - 1, Acc2 = [Pos | Acc]
+%% Build the initial hash without scanning the unused text or copying a window.
+rabin_karp_window(Unread, 0, _RollHash, WindowHash) -> {WindowHash, Unread};
+rabin_karp_window([], _Size, _RollHash, _WindowHash) -> false;
+rabin_karp_window([H | T], Size, RollHash, WindowHash) ->
+    rabin_karp_window(T, Size - 1, RollHash, RollHash(WindowHash, 0, H)).
+
+rabin_karp_scan(_, _, _, _, _, _, 0, ReversedPositions) -> lists:reverse(ReversedPositions);
+rabin_karp_scan(RollHash, Matches, Pos, WindowStart, WindowHash,
+                Unread, Remaining, ReversedPositions) ->
+    {NextRemaining, NextReversedPositions} = case Matches(WindowStart, WindowHash) of
+        false -> {Remaining, ReversedPositions};
+        true -> {Remaining - 1, [Pos | ReversedPositions]}
     end,
-    rabin_karp_h1(Iterate, Accept, Pos2, OutList2, WinHash2, IsMatch2, InList2, N2, Acc2).
+    case Unread of
+        [] -> lists:reverse(NextReversedPositions);
+        [In | RestUnread] ->
+            [Out | NextWindowStart] = WindowStart,
+            NextWindowHash = RollHash(WindowHash, Out, In),
+            rabin_karp_scan(RollHash, Matches, Pos + 1, NextWindowStart, NextWindowHash,
+                            RestUnread, NextRemaining, NextReversedPositions)
+    end.
 
 
 %% https://en.wikipedia.org/wiki/Sign_function
 %% Gives -1, 0, or 1 depending on whether X is negative, zero, or positive.
 -spec sgn(X :: number()) ->
     R :: -1 | 0 | 1.
-sgn(X) when not is_integer(X)
-          , not is_float(X) ->
+sgn(X) when not is_number(X) ->
     erlang:error(badarg);
 sgn(X) when X > 0 ->  1;
 sgn(X) when X < 0 -> -1;
@@ -167,12 +197,10 @@ boole(false) -> 0.
 
 
 %% https://en.wikipedia.org/wiki/Heaviside_step_function
-%% Represents the unit step function, equal to 0
-%% for X < 0 and 1 for X >= 0.
+%% Represents the unit step function, equal to 0 for X < 0 and 1 for X >= 0.
 -spec ustep(X :: number()) ->
     R :: 0 | 1.
-ustep(X) when not is_integer(X)
-            , not is_float(X) ->
+ustep(X) when not is_number(X) ->
     erlang:error(badarg);
 ustep(X) when X >= 0 -> 1;
 ustep(_)             -> 0.
@@ -185,39 +213,60 @@ ustep(_)             -> 0.
 id(X) -> X.
 
 
+%% Returns a uniformly shuffled list, preserving duplicate elements. Uses the
+%% calling process's rand state, as do the other random selection functions.
 -spec shuffle(L :: list()) ->
-    R :: any().
+    R :: list().
 shuffle(L) ->
-    L2 = [{rand:uniform(100), Item} || Item <- L],
-    [ShuffledItem || {_, ShuffledItem} <- lists:sort(L2)].
+    Size = length(L),
+    sample_array(Size, array:from_list(L), Size, []).
+
+%% Partial Fisher-Yates: choose an active slot and replace it with the last one.
+sample_array(0, _Array, _ActiveSize, Selected) -> Selected;
+sample_array(Remaining, Array, ActiveSize, Selected) ->
+    Index = rand:uniform(ActiveSize) - 1,
+    Elem = array:get(Index, Array),
+    LastActiveElem = array:get(ActiveSize - 1, Array),
+    NextArray = array:set(Index, LastActiveElem, Array),
+    sample_array(Remaining - 1, NextArray, ActiveSize - 1, [Elem | Selected]).
 
 -type key() :: any().
--type weight() :: integer.
--type weight_item() :: [{key(), weight()}].
--spec select_by_weight(List :: list(weight_item())) ->
+-type weight() :: integer().
+-type weight_item() :: {key(), weight()}.
+%% Returns {ok, Key} with probability proportional to its weight. The caller
+%% must supply nonnegative integer weights; zero-weight entries are not drawn.
+%% A zero total returns {error, <<"AllWeightMustGreaterThanZero">>}.
+-spec select_by_weight(List :: [weight_item()]) ->
     R :: {ok, key()} | {error, _}.
 select_by_weight(List) ->
-    AllWeight = lists:sum([Weight || {_Item, Weight} <- List, Weight >= 0]),
-    case AllWeight > 0 of
+    TotalWeight = lists:sum([Weight || {_Key, Weight} <- List, Weight >= 0]),
+    case TotalWeight > 0 of
         true ->
-            RandomWeight = rand:uniform(AllWeight),
+            RandomWeight = rand:uniform(TotalWeight),
             select_by_weight(List, RandomWeight);
         false ->
             {error, <<"AllWeightMustGreaterThanZero">>}
     end.
 
 select_by_weight(List, RandomWeight) ->
-    [{Item, Weight} | RestList] = List,
-    if
-        RandomWeight =< Weight ->
-            {ok, Item};
-        RandomWeight > Weight ->
+    [{Key, Weight} | RestList] = List,
+    case RandomWeight =< Weight of
+        true ->
+            {ok, Key};
+        false ->
             select_by_weight(RestList, RandomWeight - Weight)
     end.
 
 
--spec select_amount_by_weight(List :: list(weight_item()), Amount :: integer) ->
-    R :: {ok, list(any)} | {error, _}.
+%% Returns {ok, Keys} from weighted sampling without replacement. Supply keys
+%% distinct under == (1 and 1.0 count as the same key) and nonnegative integer
+%% weights. Partial sampling needs at least Amount positive-weight entries or
+%% it raises a badmatch error, and returns keys in reverse draw order. Taking
+%% the whole list returns keys in input order regardless of weights. Amount
+%% must be a positive integer no greater than length(List); out-of-range
+%% integers return {error, Reason}.
+-spec select_amount_by_weight(List :: [weight_item()], Amount :: integer()) ->
+    R :: {ok, [key()]} | {error, _}.
 select_amount_by_weight(_List, Amount) when Amount =< 0 ->
     {error, <<"AmountMustGreaterThanZero">>};
 select_amount_by_weight(List, Amount) when length(List) == Amount  ->
@@ -226,7 +275,7 @@ select_amount_by_weight(List, Amount) when length(List) == Amount  ->
 select_amount_by_weight(List, Amount) when length(List) < Amount ->
     {error, <<"ListLengthMustGreaterThanAmount">>};
 select_amount_by_weight(List, Amount) ->
-    select_amount_by_weight(List, Amount, []).
+    {ok, select_amount_by_weight(List, Amount, [])}.
 
 select_amount_by_weight(_List, 0, SelectedKeys) ->
     SelectedKeys;
@@ -234,10 +283,11 @@ select_amount_by_weight([], _Amount, SelectedKeys) ->
     SelectedKeys;
 select_amount_by_weight(List, Amount, SelectedKeys) ->
     {ok, SelectedKey} = select_by_weight(List),
-    SelectedList = lists:keydelete(SelectedKey, 1, List),
-    select_amount_by_weight(SelectedList, Amount-1, [SelectedKey | SelectedKeys]).
+    RemainingList = lists:keydelete(SelectedKey, 1, List),
+    select_amount_by_weight(RemainingList, Amount - 1, [SelectedKey | SelectedKeys]).
 
 
+%% Returns a uniformly chosen element, or undefined if List is empty.
 -spec get_rand_elem(List :: list()) ->
     R :: undefined | any().
 get_rand_elem([]) ->
@@ -247,26 +297,22 @@ get_rand_elem(List) ->
     Elem.
 
 
+%% Returns {ok, Elements} by uniformly sampling positions without replacement;
+%% duplicate values can remain. Taking the whole list preserves input order.
+%% Amount must be a positive integer no greater than length(List). Empty input
+%% or an out-of-range integer amount returns {error, Reason}.
 -spec get_rand_elems(List :: list(), Amount :: integer()) ->
     R :: {ok, list()} | {error, _}.
 get_rand_elems([], _Amount) ->
     {error, <<"ListEmpty">>};
 get_rand_elems(_List, Amount) when Amount =< 0 ->
     {error, <<"ArgAmountIllegal">>};
+get_rand_elems([_, _ | _] = List, 1) ->
+    {ok, [lists:nth(rand:uniform(length(List)), List)]};
 get_rand_elems(List, Amount) when length(List) == Amount ->
     {ok, List};
 get_rand_elems(List, Amount) when length(List) < Amount ->
     {error, <<"NoEnoughListElems">>};
 get_rand_elems(List, Amount) ->
-    get_rand_elems(Amount, List, length(List), [], 0).
-
-get_rand_elems(_Amount, [], _ListLen, Elems, _ElemsAmount) ->
-    {ok, Elems};
-get_rand_elems(Amount, _List, _ListLen, Elems, ElemsAmount) when ElemsAmount >= Amount ->
-    {ok, Elems};
-get_rand_elems(Amount, List, ListLen, Elems, ElemsAmount) ->
-    Index = rand:uniform(ListLen),
-    Elem = lists:nth(Index, List),
-    RestList = lists:delete(Elem, List),
-    NewElems = [Elem | Elems],
-    get_rand_elems(Amount, RestList, ListLen-1, NewElems, ElemsAmount+1).
+    Array = array:from_list(List),
+    {ok, sample_array(Amount, Array, array:size(Array), [])}.

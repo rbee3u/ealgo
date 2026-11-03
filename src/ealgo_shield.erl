@@ -5,7 +5,8 @@
 ]).
 
 
-%% Create a trie tree from a given list of shielding words.
+%% Builds a trie from character lists for use with detect/2. An empty word list
+%% matches nothing; including an empty word makes every sentence match.
 -spec create(ShieldingWordList) -> ShieldingTrie when
     ShieldingWordList :: [string()],
     ShieldingTrie :: map().
@@ -13,7 +14,6 @@ create(ShieldingWordList) ->
     lists:foldl(fun insert/2, #{}, ShieldingWordList).
 
 
-%% Insert a shielding word into the shielding trie.
 -spec insert(ShieldingWord, ShieldingTrie1) -> ShieldingTrie2 when
     ShieldingWord :: string(),
     ShieldingTrie1 :: map(),
@@ -25,20 +25,18 @@ insert([H | T], ShieldingNode) ->
     ShieldingNode#{H => insert(T, Child)}.
 
 
-%% Detect whether the sentence contains a shielding word.
+%% Returns whether Sentence contains any word in a trie returned by create/1.
+%% Matching uses exact, case-sensitive character-list substrings, without word
+%% boundaries or Unicode normalization. An empty word matches an empty sentence.
 -spec detect(Sentence, ShieldingTrie) -> boolean() when
     Sentence :: string(),
     ShieldingTrie :: map().
-detect([      ] = S, ShieldingTrie) ->
-    lookup(S, ShieldingTrie);
-detect([_H | T] = S, ShieldingTrie) ->
-    case lookup(S, ShieldingTrie) of
-        true  -> true;
-        false -> detect(T, ShieldingTrie)
-    end.
+detect([], ShieldingTrie) ->
+    lookup([], ShieldingTrie);
+detect([_ | Rest] = Sentence, ShieldingTrie) ->
+    lookup(Sentence, ShieldingTrie) orelse detect(Rest, ShieldingTrie).
 
 
-%% Judge whether the sentence has a prefix is a shielding word.
 lookup( _S,  #{ending := true}) -> true;
 lookup([     ], _ShieldingNode) -> false;
 lookup([H | T],  ShieldingNode) ->
